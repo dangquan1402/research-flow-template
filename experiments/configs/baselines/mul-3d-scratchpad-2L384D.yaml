@@ -1,0 +1,40 @@
+# Baseline: 3-digit multiplication with scratchpad
+# Derived from: experiments/results/mul_3d_reversed_2L4H384D_scratchpad_2L384D.json
+# Accuracy: 100% | Params: 3,567,744 | Time: ~3000s
+
+meta:
+  name: "mul-3d-scratchpad-2L384D"
+  question: "optimal-multiplication-scratchpad-format"
+  hypothesis: "Scratchpad enables 2L/384D to solve 3-digit multiplication"
+  acceptance_criteria: ">99% accuracy on 3-digit multiplication"
+  tags: ["baseline", "multiplication", "scratchpad", "verified"]
+
+task:
+  op: mul
+  max_digits: 3
+  tokenizer: reversed
+  balanced_carry: true
+  scratchpad: true
+  pos_encoding: learned
+
+architecture:
+  architecture: decoder_only
+  n_layers: 2
+  n_heads: 4
+  dim: 384
+  ff_dim: 1536
+  activation: gelu
+
+training:
+  epochs: 50
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.5
+  warmup_steps: 100
+  train_samples: 50000
+  test_samples: 2000
+  seed: 42
+
+mlflow:
+  enabled: true
+  experiment: "mul-3d-scratchpad"

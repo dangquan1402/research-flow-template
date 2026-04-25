@@ -1,0 +1,41 @@
+# Baseline: 5-digit addition — parameter-efficient looped transformer
+# Derived from: experiments/results/add_5d_reversed_1L4H192D_looped_1Lx4_192D.json
+# Accuracy: 99.2% | Params: 454,464 (87% fewer than 2L/384D baseline)
+
+meta:
+  name: "add-5d-looped-1Lx4-192D"
+  question: "looped-transformers-parameter-efficiency"
+  hypothesis: "Looped 1Lx4/192D achieves >99% on 5-digit addition with <500K params"
+  acceptance_criteria: ">99% accuracy on 5-digit addition"
+  tags: ["baseline", "addition", "looped", "parameter-efficient", "verified"]
+
+task:
+  op: add
+  max_digits: 5
+  tokenizer: reversed
+  balanced_carry: true
+  scratchpad: false
+  pos_encoding: learned
+
+architecture:
+  architecture: looped
+  n_layers: 1
+  n_heads: 4
+  dim: 192
+  ff_dim: 768
+  activation: gelu
+  n_loops: 4
+
+training:
+  epochs: 50
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.5
+  warmup_steps: 100
+  train_samples: 50000
+  test_samples: 2000
+  seed: 42
+
+mlflow:
+  enabled: true
+  experiment: "add-5d-looped"

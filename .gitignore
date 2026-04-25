@@ -1,0 +1,33 @@
+.env
+.env.*
+__pycache__/
+*.pyc
+.DS_Store
+.vscode/
+.idea/
+node_modules/
+
+# uv / venv
+.venv/
+
+# MLflow experiment tracking
+mlruns/
+mlartifacts/
+mlflow.db
+
+# Heavy / per-run experiment artifacts (regenerate from configs)
+experiments/checkpoints/
+experiments/results/*.partial.json
+
+# Rendered PDF pages from /read-pdf skill (regenerate from sources/*.pdf)
+sources/_pdf-images/
+
+# Claude Code per-machine state
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Browser tooling
+.playwright-mcp/
+
+# Lint / build caches
+.ruff_cache/

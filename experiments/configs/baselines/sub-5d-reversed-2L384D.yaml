@@ -1,0 +1,40 @@
+# Baseline: 5-digit subtraction with reversed output
+# Derived from: experiments/results/sub_5d_reversed_2L4H384D_sub_2L384D.json
+# Accuracy: 99.90% | Params: 3,561,216
+
+meta:
+  name: "sub-5d-reversed-2L384D"
+  question: "mixed-operation-architecture"
+  hypothesis: "Same 2L/384D architecture handles subtraction"
+  acceptance_criteria: ">99% accuracy on 5-digit subtraction"
+  tags: ["baseline", "subtraction", "verified"]
+
+task:
+  op: sub
+  max_digits: 5
+  tokenizer: reversed
+  balanced_carry: true
+  scratchpad: false
+  pos_encoding: learned
+
+architecture:
+  architecture: decoder_only
+  n_layers: 2
+  n_heads: 4
+  dim: 384
+  ff_dim: 1536
+  activation: gelu
+
+training:
+  epochs: 50
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.5
+  warmup_steps: 100
+  train_samples: 50000
+  test_samples: 2000
+  seed: 42
+
+mlflow:
+  enabled: true
+  experiment: "sub-5d-baseline"

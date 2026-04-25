@@ -1,0 +1,40 @@
+# Baseline: 5-digit addition with reversed output
+# Derived from: experiments/results/add_5d_reversed_2L4H384D_act_gelu.json
+# Accuracy: 99.95% | Params: 3,562,368 | Time: 2031s
+
+meta:
+  name: "add-5d-reversed-2L384D"
+  question: "depth-vs-width-arithmetic"
+  hypothesis: "2L/384D is optimal width for 5-digit addition"
+  acceptance_criteria: ">99% accuracy on 5-digit addition"
+  tags: ["baseline", "addition", "verified"]
+
+task:
+  op: add
+  max_digits: 5
+  tokenizer: reversed
+  balanced_carry: true
+  scratchpad: false
+  pos_encoding: learned
+
+architecture:
+  architecture: decoder_only
+  n_layers: 2
+  n_heads: 4
+  dim: 384
+  ff_dim: 1536
+  activation: gelu
+
+training:
+  epochs: 50
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.5
+  warmup_steps: 100
+  train_samples: 50000
+  test_samples: 2000
+  seed: 42
+
+mlflow:
+  enabled: true
+  experiment: "add-5d-baseline"

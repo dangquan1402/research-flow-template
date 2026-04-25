@@ -1,0 +1,40 @@
+# Baseline: 5-digit mixed operations (add+sub+mul) with scratchpad
+# Derived from: experiments/results/mixed_5d_reversed_2L4H384D_mixed_2L384D.json
+# Accuracy: 98.75% | Params: 2,781,312
+
+meta:
+  name: "mixed-5d-scratchpad-2L384D"
+  question: "mixed-operation-architecture"
+  hypothesis: "Single 2L/384D model handles all operations with scratchpad"
+  acceptance_criteria: ">95% accuracy on mixed 5-digit operations"
+  tags: ["baseline", "mixed-ops", "scratchpad", "verified"]
+
+task:
+  op: mixed
+  max_digits: 5
+  tokenizer: reversed
+  balanced_carry: true
+  scratchpad: true
+  pos_encoding: learned
+
+architecture:
+  architecture: decoder_only
+  n_layers: 2
+  n_heads: 4
+  dim: 384
+  ff_dim: 1024
+  activation: gelu
+
+training:
+  epochs: 80
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.5
+  warmup_steps: 100
+  train_samples: 50000
+  test_samples: 2000
+  seed: 42
+
+mlflow:
+  enabled: true
+  experiment: "mixed-5d-baseline"
