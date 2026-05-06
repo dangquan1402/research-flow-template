@@ -24,9 +24,9 @@ outputs/
 ## Commands
 
 - `uv sync` — install deps (loguru, pyyaml, pymupdf, tqdm; py>=3.11)
+- `uv add <pkg>` — add a dependency (torch, jax, numpy, etc. — bring your own ML framework)
 - `uv run ruff check .` / `uv run ruff format .` — lint/format (line-length 100, rules `E,F,I,W`)
 - `uv run pre-commit run --all-files` — run all pre-commit hooks
-- `uv run python -m experiments.run <config.yaml>` — **primary** experiment entry point (YAML-driven, logs to `experiments/results/run-log.jsonl`). Supports globs and `--dry-run`.
 
 ## Automation Hooks
 
@@ -123,67 +123,48 @@ memory/
 
 Steps 7-10 form the **validation & presentation layer** — they can be run in any order after synthesis, and each strengthens the others (e.g., verification failures inform critique, examples clarify evidence).
 
-## ML Experiment Workflow
+## Experiment Workflow
 
-The experiment lifecycle connects open questions to actionable decisions:
+The experiment lifecycle connects open questions to actionable decisions. The `experiments/` folder is a blank scaffold — add your own training code, scripts, or notebooks using whatever framework fits your project (`uv add torch`, `uv add jax`, etc.).
 
 ```
 QUESTION (memory/open-questions/)
     |
     v
-HYPOTHESIS (YAML config with acceptance_criteria)
+HYPOTHESIS → write your experiment script → experiments/
     |
     v
-EXPERIMENT (uv run python -m experiments.run <config.yaml>)
-    |
-    v
-RESULT (experiments/results/*.json + run-log.jsonl)
+RESULT → log to experiments/results/run-log.jsonl
     |
     |-- success -------> FINDING --> may close QUESTION
-    |-- partial -------> NEGATIVE FINDING --> refine HYPOTHESIS --> new EXPERIMENT
-    |-- inconclusive --> adjust config --> re-run
-    |-- failed:* ------> fix issue --> re-run
+    |-- partial -------> NEGATIVE FINDING --> refine HYPOTHESIS --> re-run
+    |-- inconclusive --> adjust and re-run
     |
     v (periodically)
-DISTILL --> DECISION RECORD (memory/decisions/) + BASELINE CONFIG
+DISTILL --> DECISION RECORD (memory/decisions/)
 ```
 
-### YAML Experiment Configs
+### Logging Convention
 
-Configs live in `experiments/configs/` — see `experiments/configs/README.md` for full schema.
+Append each run to `experiments/results/run-log.jsonl` — one JSON object per line:
 
-```bash
-# Run single experiment from config
-uv run python -m experiments.run experiments/configs/baselines/add-5d-reversed-2L384D.yaml
-
-# Run a sweep (multiple variants)
-uv run python -m experiments.run experiments/configs/sweeps/depth-vs-width.yaml
-
-# Batch run all baselines
-uv run python -m experiments.run experiments/configs/baselines/*.yaml
-
-# Dry run (preview without training)
-uv run python -m experiments.run --dry-run experiments/configs/baselines/*.yaml
+```json
+{"date": "YYYY-MM-DD", "experiment": "slug", "status": "success|partial|inconclusive|failed", "notes": "..."}
 ```
 
 ### Failure Classification
-
-Every experiment result gets a status in `experiments/results/run-log.jsonl`:
 
 | Status | Meaning | Action |
 |--------|---------|--------|
 | `success` | Met acceptance criteria | Write positive finding |
 | `partial` | Completed, missed criteria | Write negative finding, iterate |
-| `inconclusive` | Ambiguous results | Record, may re-run with more epochs |
-| `failed:config` | Bad config (OOM, shape mismatch) | Fix config, re-run |
-| `failed:bug` | Code bug | Fix bug, re-run |
-| `failed:infra` | Infrastructure issue | Re-run later |
+| `inconclusive` | Ambiguous results | Record, may re-run |
+| `failed` | Bug, config, or infra issue | Fix and re-run |
 
 ### Decision Records
 
 Distilled from settled findings into `memory/decisions/`. Each decision:
 - Links to evidence (finding slugs)
-- References a baseline config in `experiments/configs/baselines/`
 - Has revert conditions (when to revisit)
 - Status: `active` | `superseded` | `reverted`
 
@@ -214,5 +195,6 @@ Pages track `staleness_days` in frontmatter. `/lint` increments this. Pages >30 
 - Themes can reference multiple findings
 - Sources are immutable after creation (enforced by hook)
 - Always run `pre-commit` and `ruff` after coding changes
-- Templates for all memory pages in `docs/memory-page-template.md`
-- Dependencies managed with `uv` — `pyproject.toml` + `uv.lock`. Install: `uv sync`. Add deps: `uv add <pkg>`. Run commands: `uv run <cmd>`
+- Memory page frontmatter templates in `docs/memory-page-template.md`
+- `experiments/` is a blank scaffold — add your own scripts and framework
+- Dependencies managed with `uv` — install: `uv sync`, add: `uv add <pkg>`, run: `uv run <cmd>`
