@@ -1,5 +1,7 @@
 # research-flow-template
 
+**[📖 Read the docs →](https://dangquan1402.github.io/research-flow-template)**
+
 Skeleton for an agentic research project with persistent working memory, Claude Code skills, and a GitHub Project board for tracking goals → hypotheses → findings.
 
 **This is a template repo.** Use the scaffolder to start a new project:

@@ -1,4 +1,20 @@
+---
+layout: default
+title: Claude Code Guide
+nav_order: 3
+---
+
 # Claude Code Setup Guide
+{: .no_toc }
+
+<details open markdown="block">
+  <summary>Contents</summary>
+  {: .text-delta }
+- TOC
+{:toc}
+</details>
+
+---
 
 This document explains every Claude Code primitive used in this repo: what each concept is, why it exists here, and how the pieces fit together. Read this before touching `.claude/`.
 

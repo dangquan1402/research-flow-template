@@ -1,4 +1,20 @@
+---
+layout: default
+title: Memory Templates
+nav_order: 5
+---
+
 # Memory Page Template
+{: .no_toc }
+
+<details open markdown="block">
+  <summary>Contents</summary>
+  {: .text-delta }
+- TOC
+{:toc}
+</details>
+
+---
 
 All memory pages (entities, findings, themes, open-questions) use this frontmatter:
 
