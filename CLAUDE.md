@@ -23,12 +23,10 @@ outputs/
 
 ## Commands
 
-- `uv sync` — install deps (mlx, mlflow, loguru, etc.; py>=3.12)
+- `uv sync` — install deps (loguru, pyyaml, pymupdf, tqdm; py>=3.11)
 - `uv run ruff check .` / `uv run ruff format .` — lint/format (line-length 100, rules `E,F,I,W`)
 - `uv run pre-commit run --all-files` — run all pre-commit hooks
-- `uv run python -m experiments.run <config.yaml>` — **primary** experiment entry point (YAML-driven, logs to `experiments/results/run-log.jsonl` and MLflow). Supports globs and `--dry-run`.
-- `uv run python -m experiments.train --op <add|mul> --max_digits N [--mlflow]` — direct CLI training entry point (bypasses YAML configs; legacy/ad-hoc use)
-- `uv run mlflow ui --port 5000` — open MLflow UI
+- `uv run python -m experiments.run <config.yaml>` — **primary** experiment entry point (YAML-driven, logs to `experiments/results/run-log.jsonl`). Supports globs and `--dry-run`.
 
 ## Automation Hooks
 
@@ -139,7 +137,7 @@ HYPOTHESIS (YAML config with acceptance_criteria)
 EXPERIMENT (uv run python -m experiments.run <config.yaml>)
     |
     v
-RESULT (experiments/results/*.json + run-log.jsonl + MLflow)
+RESULT (experiments/results/*.json + run-log.jsonl)
     |
     |-- success -------> FINDING --> may close QUESTION
     |-- partial -------> NEGATIVE FINDING --> refine HYPOTHESIS --> new EXPERIMENT
@@ -207,29 +205,6 @@ Pages track `staleness_days` in frontmatter. `/lint` increments this. Pages >30 
 
 ### Entity Registry
 `memory/entity-registry.json` prevents duplicate entity pages. Always check before creating.
-
-## ML Experiment Tracking (MLflow)
-
-All ML experiments are tracked with MLflow. Dependencies in `pyproject.toml`.
-
-Tracking URI defaults to `file:./mlruns`. UI: `uv run mlflow ui --port 5000`.
-
-### Conventions
-- **Experiment naming**: match research questions — `{op}-{digits}d-{slug}` (e.g., `mul-5d-scratchpad`, `swiglu-vs-relu-faircomp`)
-- **Run naming**: embed distinguishing config — `{arch}-{layers}L-{tag}` (e.g., `looped-6L-scratchpad`)
-- **Params**: flat dot-notation keys (`model.n_layers`, `train.lr`, `data.max_digits`)
-- **Metrics**: `train_loss` every eval epoch, `val_accuracy` per eval epoch, `digit_accuracy/{n}d` per digit count
-- **Artifacts**: best model weights (`.safetensors`/`.npz`), config snapshot
-- **Tags**: `git_commit`, `architecture`, `research_question`, `stage` (exploration/refinement/final)
-- Nested runs for hyperparameter sweeps (parent/child)
-- Only log model weights for best checkpoints, not every epoch
-
-### Integration
-The trainer (`experiments/training/trainer.py`) auto-logs to MLflow when `--mlflow` flag is passed:
-```bash
-python -m experiments.train --op mul --max_digits 5 --mlflow
-python -m experiments.train --op mul --max_digits 5 --mlflow --mlflow_experiment "mul-5d-scratchpad"
-```
 
 ## Conventions
 

@@ -13,7 +13,7 @@ COMMAND="$2"
 if [[ "$COMMAND" == *"git commit"* ]]; then
   BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
   if [[ "$BRANCH" == "main" ]]; then
-    echo "BLOCKED: Cannot commit directly to main. Create a branch first: research/, hypothesis/, synthesis/, or review/"
-    exit 1
+    echo "BLOCKED: Cannot commit directly to main. Create a branch first: research/, hypothesis/, synthesis/, or review/" >&2
+    exit 2
   fi
 fi

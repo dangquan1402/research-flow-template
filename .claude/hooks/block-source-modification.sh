@@ -12,6 +12,6 @@ fi
 
 # Block editing files in sources/
 if [[ "$FILE_PATH" == *"sources/"* && "$FILE_PATH" != *".gitkeep"* ]]; then
-  echo "BLOCKED: Source files are immutable after creation. Do not modify sources/. Create a new finding in memory/findings/ instead."
-  exit 1
+  echo "BLOCKED: Source files are immutable after creation. Do not modify sources/. Create a new finding in memory/findings/ instead." >&2
+  exit 2
 fi
