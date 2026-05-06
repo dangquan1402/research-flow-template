@@ -1,0 +1,2285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code — Research Flow Wiring Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #07090e;
+    --surface:  #0e1218;
+    --border:   #1e2530;
+    --muted:    #3d4a5c;
+    --dim:      #8896a6;
+    --body:     #ccd6e0;
+    --bright:   #eef3f8;
+    --accent:   #f97316;
+    --accent2:  #38bdf8;
+    --green:    #4ade80;
+    --red:      #f87171;
+    --purple:   #a78bfa;
+    --code-bg:  #0a0d12;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--body);
+    font-family: 'DM Sans', sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ─── DECK CONTAINER ─── */
+  .deck {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .slides-wrapper {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.45s cubic-bezier(0.77, 0, 0.175, 1);
+    will-change: transform;
+  }
+
+  .slide {
+    flex: 0 0 100vw;
+    height: 100vh;
+    padding: 56px 80px 72px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ─── SLIDE BG GRID ─── */
+  .slide::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  /* ─── SLIDE: TITLE ─── */
+  .slide-title {
+    justify-content: center;
+    align-items: flex-start;
+    background: var(--bg);
+  }
+
+  .slide-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 60%, transparent 100%);
+  }
+
+  .eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .eyebrow::before {
+    content: '';
+    display: block;
+    width: 32px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  .title-heading {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 900;
+    font-size: clamp(48px, 6vw, 84px);
+    line-height: 0.95;
+    color: var(--bright);
+    letter-spacing: -0.03em;
+    margin-bottom: 32px;
+  }
+
+  .title-heading span {
+    color: var(--accent);
+  }
+
+  .title-sub {
+    font-size: 18px;
+    color: var(--dim);
+    font-weight: 300;
+    max-width: 560px;
+    line-height: 1.6;
+  }
+
+  .title-meta {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── SLIDE: CONTENT ─── */
+  .slide-content {
+    justify-content: flex-start;
+  }
+
+  .slide-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .slide-label::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h2 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: clamp(28px, 3.5vw, 46px);
+    color: var(--bright);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin-bottom: 36px;
+  }
+
+  h2 span.hl { color: var(--accent); }
+  h2 span.hl2 { color: var(--accent2); }
+
+  .slide-body {
+    flex: 1;
+    display: flex;
+    gap: 48px;
+    align-items: flex-start;
+  }
+
+  .col { flex: 1; }
+
+  /* ─── BULLETS ─── */
+  .bullets { list-style: none; display: flex; flex-direction: column; gap: 16px; }
+
+  .bullets li {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    font-size: 16px;
+    line-height: 1.55;
+    color: var(--body);
+  }
+
+  .bullets li .bullet-icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    margin-top: 2px;
+    border-radius: 4px;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    color: #000;
+  }
+
+  .bullets li .bullet-icon.blue { background: var(--accent2); }
+  .bullets li .bullet-icon.green { background: var(--green); }
+  .bullets li .bullet-icon.purple { background: var(--purple); }
+
+  .bullets li strong { color: var(--bright); font-weight: 500; }
+
+  /* ─── CALLOUT BOX ─── */
+  .callout {
+    border-left: 3px solid var(--accent);
+    padding: 16px 20px;
+    background: rgba(249, 115, 22, 0.06);
+    border-radius: 0 6px 6px 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--body);
+    margin-top: 20px;
+  }
+
+  .callout.blue {
+    border-color: var(--accent2);
+    background: rgba(56, 189, 248, 0.06);
+  }
+
+  .callout.green {
+    border-color: var(--green);
+    background: rgba(74, 222, 128, 0.06);
+  }
+
+  .callout strong { color: var(--bright); }
+
+  /* ─── CODE BLOCKS ─── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 22px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    overflow: hidden;
+    color: var(--body);
+    position: relative;
+  }
+
+  pre.sm { font-size: 12px; padding: 14px 18px; }
+  pre.xs { font-size: 11px; padding: 12px 16px; line-height: 1.65; }
+
+  pre .lang-tag {
+    position: absolute;
+    top: 8px; right: 12px;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  code { font-family: 'DM Mono', monospace; font-size: 0.9em; }
+
+  /* syntax */
+  .kw  { color: #f87171; }  /* keyword / tag */
+  .str { color: #86efac; }  /* string */
+  .cm  { color: #475569; font-style: italic; } /* comment */
+  .fn  { color: #93c5fd; }  /* function / key */
+  .op  { color: var(--accent); }  /* operator / punct */
+  .num { color: #fbbf24; }  /* number */
+  .var { color: #c4b5fd; }  /* variable */
+  .pl  { color: var(--accent2); } /* path / special */
+
+  /* ─── TABLES ─── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  th {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--dim);
+    text-align: left;
+    padding: 0 16px 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 12px 16px 12px 0;
+    border-bottom: 1px solid rgba(30, 37, 48, 0.6);
+    color: var(--body);
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  td:first-child { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--accent); white-space: nowrap; }
+  td.w { color: var(--accent2); }
+  td strong { color: var(--bright); font-weight: 500; }
+
+  /* ─── FILE TREE ─── */
+  .filetree {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    line-height: 1.85;
+    color: var(--body);
+  }
+
+  .filetree .dir { color: var(--accent2); }
+  .filetree .file { color: var(--body); }
+  .filetree .comment { color: var(--muted); font-style: italic; }
+  .filetree .accent-file { color: var(--accent); }
+
+  /* ─── FLOW STEPS ─── */
+  .flow { display: flex; flex-direction: column; gap: 12px; }
+
+  .flow-step {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--body);
+    transition: border-color 0.2s;
+  }
+
+  .flow-step:hover { border-color: var(--muted); }
+
+  .step-num {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #000;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+
+  .step-num.blue { background: var(--accent2); }
+  .step-num.green { background: var(--green); }
+  .step-num.purple { background: var(--purple); }
+  .step-num.red { background: var(--red); }
+
+  .flow-step strong { color: var(--bright); font-weight: 500; }
+
+  /* ─── BADGE ─── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .badge.pre  { background: rgba(249,115,22,0.15); color: var(--accent); }
+  .badge.post { background: rgba(56,189,248,0.15); color: var(--accent2); }
+  .badge.block { background: rgba(248,113,113,0.15); color: var(--red); }
+  .badge.remind { background: rgba(74,222,128,0.15); color: var(--green); }
+
+  /* ─── CARDS ─── */
+  .cards { display: flex; gap: 16px; }
+
+  .card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 20px 18px;
+  }
+
+  .card-head {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-head.blue { color: var(--accent2); }
+  .card-head.green { color: var(--green); }
+
+  .card-title {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--bright);
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  .card p { font-size: 13px; color: var(--dim); line-height: 1.55; }
+
+  /* ─── SEPARATOR ─── */
+  .sep { width: 1px; background: var(--border); flex-shrink: 0; }
+
+  /* ─── NAV ─── */
+  .nav {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    z-index: 100;
+    background: rgba(14, 18, 24, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 10px 20px;
+  }
+
+  .nav-btn {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--dim);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+
+  .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+  .nav-btn:disabled:hover { border-color: var(--border); color: var(--dim); }
+
+  .nav-counter {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    min-width: 52px;
+    text-align: center;
+  }
+
+  .nav-dots {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .dot.active { background: var(--accent); transform: scale(1.4); }
+
+  /* ─── PROGRESS ─── */
+  .progress {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--border);
+    z-index: 100;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.45s cubic-bezier(0.77, 0, 0.175, 1);
+  }
+
+  /* ─── SLIDE NUM ─── */
+  .slide-num {
+    position: absolute;
+    top: 28px; right: 40px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    z-index: 2;
+  }
+
+  /* ─── KEY HINT ─── */
+  .key-hint {
+    position: fixed;
+    bottom: 28px; right: 40px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+
+  kbd {
+    display: inline-block;
+    padding: 2px 5px;
+    border: 1px solid var(--muted);
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--muted);
+  }
+
+  /* ─── INLINE CODE ─── */
+  .ic {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.88em;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--accent2);
+  }
+
+  /* two-col layout util */
+  .two-col { display: flex; gap: 40px; flex: 1; }
+  .two-col .col { display: flex; flex-direction: column; gap: 16px; }
+
+  /* ─── HIGHLIGHT ROW ─── */
+  .hl-row {
+    padding: 14px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .hl-row .label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .hl-row p { color: var(--body); }
+  .hl-row strong { color: var(--bright); }
+
+  /* ─── LAYER DIAGRAM ─── */
+  .layers { display: flex; flex-direction: column; gap: 8px; }
+
+  .layer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .layer-num {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 900;
+    font-size: 32px;
+    line-height: 1;
+    opacity: 0.15;
+    color: var(--bright);
+    min-width: 40px;
+  }
+
+  .layer-body .layer-name {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--bright);
+    margin-bottom: 3px;
+  }
+
+  .layer-body .layer-path {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+  }
+
+  .layer-body .layer-desc {
+    font-size: 13px;
+    color: var(--dim);
+    margin-top: 4px;
+  }
+
+  /* ─── HOOK DETAIL ─── */
+  .hook-meta { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+
+  .hook-section {
+    margin-bottom: 16px;
+  }
+
+  .hook-section .hook-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .hook-section p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--body);
+  }
+
+  .hook-section p strong { color: var(--bright); }
+
+  /* ─── TOC ─── */
+  .toc-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 11px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .toc-item:hover { border-color: var(--accent2); background: rgba(56,189,248,0.05); }
+  .toc-item.toc-new { border-color: rgba(74,222,128,0.3); }
+  .toc-item.toc-new:hover { border-color: var(--green); background: rgba(74,222,128,0.05); }
+
+  .toc-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 28px;
+    flex-shrink: 0;
+  }
+
+  .toc-title {
+    font-size: 14px;
+    color: var(--body);
+    flex: 1;
+    font-weight: 400;
+  }
+
+  .toc-item:hover .toc-title { color: var(--bright); }
+
+  .toc-tag {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .toc-tag.new-badge {
+    color: var(--green);
+    background: rgba(74,222,128,0.1);
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+
+  /* ─── PRINT / PDF ─── */
+  @media print {
+    @page { size: 1280px 720px; margin: 0; }
+
+    html, body { width: 1280px; height: 720px; overflow: visible; background: var(--bg); }
+
+    .deck { overflow: visible; height: auto; width: 1280px; }
+
+    .slides-wrapper {
+      flex-direction: column !important;
+      transform: none !important;
+      width: 1280px;
+      height: auto;
+      transition: none !important;
+    }
+
+    .slide {
+      flex: none !important;
+      width: 1280px !important;
+      height: 720px !important;
+      page-break-after: always;
+      break-after: page;
+      overflow: hidden;
+    }
+
+    .nav, .progress, .key-hint { display: none !important; }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="progress-fill" id="progress"></div></div>
+
+<div class="deck">
+  <div class="slides-wrapper" id="slides">
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 1 — TITLE
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-title">
+      <div class="slide-num"></div>
+      <div class="eyebrow">research-flow-template</div>
+      <div class="title-heading">Claude Code<br><span>Wiring Guide</span></div>
+      <div class="title-sub">How hooks, skills, CLAUDE.md, and folder structure combine to make an agentic research system.<br><span style="color:var(--muted);font-size:15px">A simple starter — update the flow, skills, and hooks to fit your project.</span></div>
+      <div class="title-meta">
+        <span class="tag">CLAUDE.md</span>
+        <span class="tag">hooks</span>
+        <span class="tag">skills</span>
+        <span class="tag">memory/</span>
+        <span class="tag">sources/</span>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 2 — TABLE OF CONTENTS
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Overview</div>
+      <h2>What's in <span class="hl2">this deck</span></h2>
+      <div class="slide-body">
+        <div class="col">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.14em;padding:0 4px 4px;margin-top:2px">Context &amp; Why</div>
+            <div class="toc-item" data-goto="3">
+              <span class="toc-num">01</span>
+              <span class="toc-title">Why This System Exists</span>
+              <span class="toc-tag">motivation</span>
+            </div>
+            <div class="toc-item" data-goto="4">
+              <span class="toc-num">02</span>
+              <span class="toc-title">The Common Research Flow</span>
+              <span class="toc-tag">lifecycle</span>
+            </div>
+            <div class="toc-item" data-goto="5">
+              <span class="toc-num">03</span>
+              <span class="toc-title">The Mental Model</span>
+              <span class="toc-tag">CLAUDE.md · hooks · skills</span>
+            </div>
+            <div class="toc-item" data-goto="6">
+              <span class="toc-num">04</span>
+              <span class="toc-title">CLAUDE.md Template</span>
+              <span class="toc-tag">what it looks like</span>
+            </div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent2);text-transform:uppercase;letter-spacing:0.14em;padding:6px 4px 4px;margin-top:4px">Claude Code Primitives</div>
+            <div class="toc-item" data-goto="7">
+              <span class="toc-num">05</span>
+              <span class="toc-title">What is Claude Code?</span>
+              <span class="toc-tag">foundations</span>
+            </div>
+            <div class="toc-item" data-goto="8">
+              <span class="toc-num">06</span>
+              <span class="toc-title">CLAUDE.md — The Brain</span>
+              <span class="toc-tag">always-loaded context</span>
+            </div>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent2);text-transform:uppercase;letter-spacing:0.14em;padding:0 4px 4px;margin-top:2px">Claude Code Primitives (cont.)</div>
+            <div class="toc-item" data-goto="9">
+              <span class="toc-num">07</span>
+              <span class="toc-title">.claude/ Folder Layout</span>
+              <span class="toc-tag">config directory</span>
+            </div>
+            <div class="toc-item" data-goto="10">
+              <span class="toc-num">08–10</span>
+              <span class="toc-title">settings.json + Hooks (3 slides)</span>
+              <span class="toc-tag">wiring &amp; guardrails</span>
+            </div>
+            <div class="toc-item" data-goto="15">
+              <span class="toc-num">11</span>
+              <span class="toc-title">Skills — Slash Commands</span>
+              <span class="toc-tag">custom commands</span>
+            </div>
+            <div class="toc-item" data-goto="16">
+              <span class="toc-num">12</span>
+              <span class="toc-title">Repo Folder Layout</span>
+              <span class="toc-tag">project structure</span>
+            </div>
+            <div class="toc-item" data-goto="17">
+              <span class="toc-num">13</span>
+              <span class="toc-title">A Full Research Session</span>
+              <span class="toc-tag">end-to-end</span>
+            </div>
+            <div class="toc-item" data-goto="18">
+              <span class="toc-num">14–15</span>
+              <span class="toc-title">Adding Your Own Hooks &amp; Skills</span>
+              <span class="toc-tag">extending</span>
+            </div>
+            <div class="toc-item toc-new" data-goto="20">
+              <span class="toc-num">16–17</span>
+              <span class="toc-title">/import — Existing Project Onboarding</span>
+              <span class="toc-tag new-badge">new skill</span>
+            </div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:0.14em;padding:6px 4px 4px;margin-top:4px">Get Started</div>
+            <div class="toc-item" data-goto="22">
+              <span class="toc-num">18</span>
+              <span class="toc-title">Prerequisites</span>
+              <span class="toc-tag">tools &amp; env</span>
+            </div>
+            <div class="toc-item" data-goto="23">
+              <span class="toc-num">19</span>
+              <span class="toc-title">Quick Start</span>
+              <span class="toc-tag">from zero to research</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 3 — WHY THIS EXISTS
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Motivation</div>
+      <h2>Why This <span class="hl">System</span> Exists</h2>
+      <div class="slide-body">
+        <div class="col">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px">The Problem</div>
+          <ul class="bullets" style="margin-bottom:24px">
+            <li>
+              <div class="bullet-icon" style="background:var(--red);color:#fff">✕</div>
+              <div>Research creates <strong>hundreds of artifacts</strong> — papers, notes, experiments, results — with no thread connecting them to the original question.</div>
+            </li>
+            <li>
+              <div class="bullet-icon" style="background:var(--red);color:#fff">✕</div>
+              <div><strong>LLMs are stateless.</strong> Great at reasoning in the moment; terrible at remembering what they concluded last week. Every session starts from scratch.</div>
+            </li>
+            <li>
+              <div class="bullet-icon" style="background:var(--red);color:#fff">✕</div>
+              <div>Without structure, Claude will <strong>hallucinate continuity</strong> — appearing to remember context it has actually lost, or repeating work already done.</div>
+            </li>
+          </ul>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px">The Solution</div>
+          <ul class="bullets">
+            <li>
+              <div class="bullet-icon green">✓</div>
+              <div><strong>Persistent memory in files.</strong> Every insight is written down. Claude reads it fresh each session — no hallucinated continuity.</div>
+            </li>
+            <li>
+              <div class="bullet-icon green">✓</div>
+              <div><strong>A defined methodology.</strong> CLAUDE.md tells Claude exactly how to do research in this project — what structure to follow, what quality bar to meet.</div>
+            </li>
+            <li>
+              <div class="bullet-icon green">✓</div>
+              <div><strong>Automated guardrails.</strong> Hooks enforce the rules Claude might otherwise skip under pressure. The structure holds even in long sessions.</div>
+            </li>
+          </ul>
+        </div>
+        <div class="sep"></div>
+        <div class="col" style="display:flex;flex-direction:column;gap:12px">
+          <div class="callout" style="font-size:14px;line-height:1.65">
+            <strong>Core insight:</strong> Claude is not the researcher. Claude is the <em>research assistant</em>. The methodology lives in the repo — Claude executes it. This means the research process is <strong>reproducible, auditable, and improvable</strong> independently of which Claude session is running.
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 22px">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:14px">Without this system</div>
+            <div style="font-size:13px;color:var(--dim);line-height:1.7">
+              Session 1: "Let's research X" → findings in chat<br>
+              Session 2: Claude has no memory → starts over<br>
+              Session 3: Contradicts Session 1's conclusions<br>
+              Week 3: No idea what was already tried<br>
+              <span style="color:var(--red)">→ Research is lost between sessions</span>
+            </div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin:16px 0 10px">With this system</div>
+            <div style="font-size:13px;color:var(--body);line-height:1.7">
+              Every session: Claude reads memory/ and CLAUDE.md<br>
+              Every insight: written to memory/findings/<br>
+              Every contradiction: surfaced in open-questions/<br>
+              Any session: full context immediately available<br>
+              <span style="color:var(--green)">→ Research compounds across sessions</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 4 — THE COMMON RESEARCH FLOW
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Lifecycle</div>
+      <h2>The Common <span class="hl2">Research Flow</span></h2>
+      <div class="slide-body">
+        <div class="col" style="flex:1.15">
+          <div style="display:flex;flex-direction:column;gap:6px">
+
+            <div style="display:flex;gap:0;align-items:stretch">
+              <div style="display:flex;flex-direction:column;align-items:center;margin-right:16px">
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;color:#000;flex-shrink:0">Q</div>
+                <div style="flex:1;width:1px;background:var(--border);margin:4px 0"></div>
+              </div>
+              <div style="padding:6px 0 16px">
+                <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:15px;color:var(--bright);margin-bottom:3px">Question / Goal</div>
+                <div style="font-size:13px;color:var(--dim)">Define what you're trying to learn. Set scope and success criteria. → <span style="color:var(--accent);font-family:'DM Mono',monospace;font-size:12px">/research</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:0;align-items:stretch">
+              <div style="display:flex;flex-direction:column;align-items:center;margin-right:16px">
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;color:#000;flex-shrink:0">S</div>
+                <div style="flex:1;width:1px;background:var(--border);margin:4px 0"></div>
+              </div>
+              <div style="padding:6px 0 16px">
+                <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:15px;color:var(--bright);margin-bottom:3px">Sources</div>
+                <div style="font-size:13px;color:var(--dim)">Ingest papers, codebases, docs, web content. Write-once to <span style="color:var(--accent2);font-family:'DM Mono',monospace;font-size:12px">sources/</span>. → <span style="color:var(--accent);font-family:'DM Mono',monospace;font-size:12px">/analyze</span> or <span style="color:var(--accent);font-family:'DM Mono',monospace;font-size:12px">/import</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:0;align-items:stretch">
+              <div style="display:flex;flex-direction:column;align-items:center;margin-right:16px">
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;color:#fff;flex-shrink:0">A</div>
+                <div style="flex:1;width:1px;background:var(--border);margin:4px 0"></div>
+              </div>
+              <div style="padding:6px 0 16px">
+                <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:15px;color:var(--bright);margin-bottom:3px">Analysis</div>
+                <div style="font-size:13px;color:var(--dim)">Extract entities, findings, open questions. Build <span style="color:var(--accent2);font-family:'DM Mono',monospace;font-size:12px">memory/</span>. Multiple parallel agents on <span style="color:var(--accent2);font-family:'DM Mono',monospace;font-size:12px">hypothesis/</span> branches.</div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:0;align-items:stretch">
+              <div style="display:flex;flex-direction:column;align-items:center;margin-right:16px">
+                <div style="width:32px;height:32px;border-radius:50%;background:#fbbf24;display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;color:#000;flex-shrink:0">E</div>
+                <div style="flex:1;width:1px;background:var(--border);margin:4px 0"></div>
+              </div>
+              <div style="padding:6px 0 16px">
+                <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:15px;color:var(--bright);margin-bottom:3px">Experiment <span style="font-size:11px;color:var(--muted);font-weight:400">(optional)</span></div>
+                <div style="font-size:13px;color:var(--dim)">Test hypotheses with ML runs. Log results. Classify as success / partial / inconclusive. → <span style="color:var(--accent);font-family:'DM Mono',monospace;font-size:12px">/experiment</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:0;align-items:stretch">
+              <div style="display:flex;flex-direction:column;align-items:center;margin-right:16px">
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;color:#000;flex-shrink:0">Sy</div>
+                <div style="flex:1;width:1px;background:var(--border);margin:4px 0"></div>
+              </div>
+              <div style="padding:6px 0 16px">
+                <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:15px;color:var(--bright);margin-bottom:3px">Synthesis</div>
+                <div style="font-size:13px;color:var(--dim)">Consolidate findings across hypothesis branches. Build themes. Resolve contradictions. → <span style="color:var(--accent);font-family:'DM Mono',monospace;font-size:12px">/synthesize</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:0;align-items:stretch">
+              <div style="display:flex;flex-direction:column;align-items:center;margin-right:16px">
+                <div style="width:32px;height:32px;border-radius:50%;background:var(--body);display:flex;align-items:center;justify-content:center;font-family:'Outfit',sans-serif;font-weight:700;font-size:13px;color:#000;flex-shrink:0">O</div>
+              </div>
+              <div style="padding:6px 0 0">
+                <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:15px;color:var(--bright);margin-bottom:3px">Output &amp; Validation</div>
+                <div style="font-size:13px;color:var(--dim)">Evidence, verification, examples, critique → <span style="color:var(--accent2);font-family:'DM Mono',monospace;font-size:12px">outputs/</span>. Decisions distilled → <span style="color:var(--accent2);font-family:'DM Mono',monospace;font-size:12px">memory/decisions/</span>.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="col" style="flex:0.85;display:flex;flex-direction:column;gap:14px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:2px">Each Phase Maps to a Skill</div>
+          <table>
+            <tr><th>Phase</th><th>Skill</th></tr>
+            <tr><td>Goal definition</td><td><span style="color:var(--accent);font-family:'DM Mono',monospace">/research</span></td></tr>
+            <tr><td>Source ingest</td><td><span style="color:var(--accent);font-family:'DM Mono',monospace">/analyze, /import, /read-pdf</span></td></tr>
+            <tr><td>Experiment</td><td><span style="color:var(--accent);font-family:'DM Mono',monospace">/experiment</span></td></tr>
+            <tr><td>Consolidation</td><td><span style="color:var(--accent);font-family:'DM Mono',monospace">/synthesize, /distill</span></td></tr>
+            <tr><td>Validation</td><td><span style="color:var(--accent);font-family:'DM Mono',monospace">/evidence, /verify, /examples, /critique</span></td></tr>
+            <tr><td>Maintenance</td><td><span style="color:var(--accent);font-family:'DM Mono',monospace">/lint</span></td></tr>
+          </table>
+          <div class="callout blue" style="font-size:13px;margin-top:4px">
+            <strong>Parallel agents:</strong> Multiple <span class="ic">hypothesis/</span> branches can explore different angles simultaneously. Each agent reads the same <span class="ic">CLAUDE.md</span>, writes to its own branch, and a synthesis agent merges the best findings.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 5 — THE MENTAL MODEL
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Mental model</div>
+      <h2>Three Primitives, <span class="hl">One System</span></h2>
+      <div class="slide-body" style="align-items:stretch">
+        <div style="flex:1;display:flex;flex-direction:column;gap:20px">
+
+          <div style="flex:1;background:rgba(249,115,22,0.07);border:1px solid rgba(249,115,22,0.35);border-radius:10px;padding:24px 26px;display:flex;gap:20px;align-items:flex-start">
+            <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:52px;color:var(--accent);opacity:0.25;line-height:1;flex-shrink:0;margin-top:-4px">01</div>
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);font-weight:500">CLAUDE.md</span>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:rgba(249,115,22,0.1);padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.1em">The Methodology</span>
+              </div>
+              <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:20px;color:var(--bright);margin-bottom:8px">Guidance &amp; flow for research</div>
+              <div style="font-size:14px;color:var(--body);line-height:1.6">Defines <em>what good research looks like</em> in this project — what goes in memory, how findings are structured, what quality bar to meet, which git branches to use. Claude reads this at every session start. It's the research methodology, not code.</div>
+            </div>
+          </div>
+
+          <div style="flex:1;background:rgba(248,113,113,0.07);border:1px solid rgba(248,113,113,0.35);border-radius:10px;padding:24px 26px;display:flex;gap:20px;align-items:flex-start">
+            <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:52px;color:var(--red);opacity:0.25;line-height:1;flex-shrink:0;margin-top:-4px">02</div>
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--red);font-weight:500">Hooks</span>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:rgba(248,113,113,0.1);padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.1em">The Guardrails</span>
+              </div>
+              <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:20px;color:var(--bright);margin-bottom:8px">Force Claude to strictly follow the methodology</div>
+              <div style="font-size:14px;color:var(--body);line-height:1.6">Shell scripts that intercept Claude's tool calls and either block or remind. Claude can't "forget" a rule — the hook runs automatically regardless of context length or session state. Hooks encode the invariants that <em>must never break</em>.</div>
+            </div>
+          </div>
+
+          <div style="flex:1;background:rgba(56,189,248,0.07);border:1px solid rgba(56,189,248,0.35);border-radius:10px;padding:24px 26px;display:flex;gap:20px;align-items:flex-start">
+            <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:52px;color:var(--accent2);opacity:0.25;line-height:1;flex-shrink:0;margin-top:-4px">03</div>
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--accent2);font-weight:500">Skills</span>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:rgba(56,189,248,0.1);padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:0.1em">The Procedures</span>
+              </div>
+              <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:20px;color:var(--bright);margin-bottom:8px">Detailed guidance for each operation</div>
+              <div style="font-size:14px;color:var(--body);line-height:1.6">Step-by-step instructions for each research phase — loaded only when invoked. Skills don't define policy (that's CLAUDE.md); they define <em>how to execute</em> a phase: what to ask, what to write, what to log, how to commit.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 6 — CLAUDE.md TEMPLATE
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">What it looks like</div>
+      <h2>A <span class="hl">CLAUDE.md</span> Template</h2>
+      <div class="slide-body">
+        <div class="col">
+          <pre class="xs"><span class="lang-tag">CLAUDE.md</span><span class="cm"># My Research Project
+
+## Research Goal
+What question are we answering?
+What counts as done (success criteria)?</span>
+
+<span class="cm">## Memory Structure</span>
+<span class="pl">sources/</span>       <span class="cm">— raw material, write-once, never edited</span>
+<span class="pl">memory/</span>        <span class="cm">— wiki: entities, findings, themes, questions</span>
+<span class="pl">outputs/</span>       <span class="cm">— deliverables: reports, evidence, decisions</span>
+
+<span class="cm">## Memory Rules</span>
+<span class="op">-</span> Every page: YAML frontmatter with <span class="fn">title</span>, <span class="fn">created</span>,
+  <span class="fn">updated</span>, <span class="fn">confidence</span> (high/medium/low), <span class="fn">tags</span>
+<span class="op">-</span> <span class="pl">memory/index.md</span> updated after every ingest
+<span class="op">-</span> <span class="pl">memory/log.md</span> is append-only — never edit past entries
+<span class="op">-</span> Check <span class="pl">entity-registry.json</span> before creating entity pages
+
+<span class="cm">## Quality Standards</span>
+<span class="op">-</span> Every finding needs a citation + counter-argument
+<span class="op">-</span> Classify each finding:
+    <span class="str">source</span>      — directly cited from material
+    <span class="str">analysis</span>    — inferred; show your reasoning
+    <span class="str">unverified</span>  — noted but not validated
+    <span class="str">gap</span>         — explicitly missing information
+
+<span class="cm">## Git Flow</span>
+<span class="op">-</span> Never commit to <span class="kw">main</span>
+<span class="op">-</span> All work on typed branches:
+    <span class="pl">research/</span>   — new goal
+    <span class="pl">hypothesis/</span> — one angle on a goal
+    <span class="pl">synthesis/</span>  — merge findings
+    <span class="pl">review/</span>     — memory maintenance</pre>
+        </div>
+        <div class="sep"></div>
+        <div class="col" style="display:flex;flex-direction:column;gap:14px">
+          <div class="callout" style="font-size:14px">
+            <strong>This file IS the research methodology.</strong> Claude reads it at startup every session. It doesn't need to be reminded of the rules — they're here.
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="hl-row">
+              <div class="label">What belongs in CLAUDE.md</div>
+              <p>Rules that apply to <strong>every operation</strong> — memory hygiene, quality gates, git conventions, what counts as a finding vs. an entity.</p>
+            </div>
+            <div class="hl-row">
+              <div class="label">What does NOT belong</div>
+              <p>Step-by-step procedures for specific commands. Those go in <strong>skills</strong> — loaded only when invoked, keeping CLAUDE.md focused.</p>
+            </div>
+            <div class="hl-row">
+              <div class="label">The relationship</div>
+              <p>Skills reference CLAUDE.md implicitly. When <span class="ic">/analyze</span> says "write a finding", CLAUDE.md defines what a finding must contain.</p>
+            </div>
+          </div>
+          <div class="callout green" style="font-size:13px;margin-top:0">
+            <strong>Start minimal.</strong> Add sections only when Claude consistently gets something wrong. Every rule in CLAUDE.md should exist because something broke without it.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 7 — WHAT IS CLAUDE CODE
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Foundations</div>
+      <h2>What is <span class="hl">Claude Code</span>?</h2>
+      <div class="slide-body">
+        <div class="col">
+          <ul class="bullets">
+            <li>
+              <div class="bullet-icon">01</div>
+              <div><strong>CLI agent, not a chat window.</strong> Claude Code runs in your terminal and has direct access to your filesystem and shell.</div>
+            </li>
+            <li>
+              <div class="bullet-icon blue">02</div>
+              <div><strong>Reads and writes files directly.</strong> No copy-paste. It opens, edits, and creates files in your working directory.</div>
+            </li>
+            <li>
+              <div class="bullet-icon green">03</div>
+              <div><strong>Persists context across sessions</strong> via files — not conversation memory. <span class="ic">CLAUDE.md</span> and <span class="ic">memory/</span> survive between runs.</div>
+            </li>
+            <li>
+              <div class="bullet-icon purple">04</div>
+              <div><strong>Extensible.</strong> Give it custom commands (skills) and automated guardrails (hooks) — both live in <span class="ic">.claude/</span>.</div>
+            </li>
+          </ul>
+          <div class="callout blue" style="margin-top:28px">
+            When you run <strong><span class="ic">claude</span></strong> in this repo, it loads <span class="ic">CLAUDE.md</span> and <span class="ic">.claude/settings.json</span> before anything else.
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <pre><span class="lang-tag">shell</span><span class="cm"># Start a session</span>
+<span class="fn">claude</span>
+
+<span class="cm"># Claude now has access to:</span>
+<span class="op">·</span> your terminal
+<span class="op">·</span> all files in the current directory
+<span class="op">·</span> git, gh, uv, python, ...
+
+<span class="cm"># Its configuration lives in:</span>
+<span class="pl">.claude/</span>
+<span class="pl">CLAUDE.md</span>
+
+<span class="cm"># Persistent research memory lives in:</span>
+<span class="pl">memory/</span>
+<span class="pl">sources/</span>
+<span class="pl">goals/</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 3 — CLAUDE.md
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Persistence layer 0</div>
+      <h2><span class="hl">CLAUDE.md</span> — The Brain</h2>
+      <div class="slide-body">
+        <div class="col">
+          <ul class="bullets">
+            <li>
+              <div class="bullet-icon">→</div>
+              <div>Loaded <strong>automatically at startup</strong> for every session in this directory. Think of it as a persistent system prompt.</div>
+            </li>
+            <li>
+              <div class="bullet-icon blue">→</div>
+              <div>Defines the <strong>research loop</strong> — what each command is supposed to do, memory structure rules, Git conventions.</div>
+            </li>
+            <li>
+              <div class="bullet-icon green">→</div>
+              <div><strong>Always in context.</strong> Skills are only loaded when invoked. If CLAUDE.md and a skill disagree, CLAUDE.md wins.</div>
+            </li>
+          </ul>
+
+          <div class="callout" style="margin-top:24px">
+            <strong>Rule:</strong> Everything Claude must <em>always</em> know goes in CLAUDE.md. Step-by-step procedures for specific commands go in skills.
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:12px">CLAUDE.md contains</div>
+          <div class="cards" style="flex-direction:column;gap:10px">
+            <div class="card">
+              <div class="card-head">Research Loop</div>
+              <div class="card-title">/research → /analyze → /synthesize</div>
+              <p>The lifecycle of a research goal from question to deliverable.</p>
+            </div>
+            <div class="card">
+              <div class="card-head blue">Memory Rules</div>
+              <div class="card-title">Frontmatter, index hygiene, log format</div>
+              <p>What every memory page must contain, and how to keep it consistent.</p>
+            </div>
+            <div class="card">
+              <div class="card-head green">Git + Quality</div>
+              <div class="card-title">Branch types, FUNGI counter-arguments</div>
+              <p>Branch naming, commit prefixes, confidence levels, verification gates.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 4 — .claude/ FOLDER LAYOUT
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Config directory</div>
+      <h2>The <span class="hl2">.claude/</span> Folder</h2>
+      <div class="slide-body">
+        <div class="col" style="flex:1.2">
+          <pre class="sm"><span class="lang-tag">tree</span><span class="dir">.claude/</span>
+<span class="op">├──</span> <span class="accent-file">settings.json</span>        <span class="comment"># hook wiring — the router</span>
+<span class="op">├──</span> <span class="dir">hooks/</span>
+<span class="op">│   ├──</span> <span class="file">block-source-modification.sh</span>
+<span class="op">│   │</span>   <span class="comment">  PreToolUse → Edit — sources/ are immutable</span>
+<span class="op">│   ├──</span> <span class="file">block-commit-protected-branch.sh</span>
+<span class="op">│   │</span>   <span class="comment">  PreToolUse → Bash — no commits to main</span>
+<span class="op">│   └──</span> <span class="file">post-memory-update.sh</span>
+<span class="op">│  </span>     <span class="comment">  PostToolUse → Edit|Write — sync index + log</span>
+<span class="op">└──</span> <span class="dir">skills/</span>
+    <span class="op">├──</span> <span class="file">research.md</span>      <span class="comment"># /research</span>
+    <span class="op">├──</span> <span class="file">analyze.md</span>       <span class="comment"># /analyze</span>
+    <span class="op">├──</span> <span class="file">synthesize.md</span>    <span class="comment"># /synthesize</span>
+    <span class="op">├──</span> <span class="file">experiment.md</span>    <span class="comment"># /experiment</span>
+    <span class="op">├──</span> <span class="file">distill.md</span>       <span class="comment"># /distill</span>
+    <span class="op">├──</span> <span class="file">evidence.md</span>      <span class="comment"># /evidence</span>
+    <span class="op">├──</span> <span class="file">verify.md</span>        <span class="comment"># /verify</span>
+    <span class="op">├──</span> <span class="file">examples.md</span>      <span class="comment"># /examples</span>
+    <span class="op">├──</span> <span class="file">critique.md</span>      <span class="comment"># /critique</span>
+    <span class="op">├──</span> <span class="file">lint.md</span>          <span class="comment"># /lint</span>
+    <span class="op">└──</span> <span class="dir">read-pdf/</span>        <span class="comment"># /read-pdf (+ helper scripts)</span></pre>
+        </div>
+        <div class="sep"></div>
+        <div class="col" style="flex:0.8;display:flex;flex-direction:column;gap:14px">
+          <div class="hl-row">
+            <div class="label">settings.json</div>
+            <p>The routing table. Wires tool events to shell scripts. Contains <strong>no logic</strong> — only configuration.</p>
+          </div>
+          <div class="hl-row">
+            <div class="label">hooks/</div>
+            <p>Shell scripts that enforce invariants. Exit <strong>0</strong> = allow. Exit <strong>1</strong> = block with error.</p>
+          </div>
+          <div class="hl-row">
+            <div class="label">skills/</div>
+            <p>Markdown files that define <strong>slash commands</strong>. Loaded on-demand when invoked — not at startup.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 5 — SETTINGS.JSON
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Hook Wiring</div>
+      <h2><span class="hl">settings.json</span> — The Router</h2>
+      <div class="slide-body">
+        <div class="col">
+          <pre><span class="lang-tag">json</span>{
+  <span class="fn">"hooks"</span>: {
+    <span class="fn">"PreToolUse"</span>: [
+      {
+        <span class="fn">"matcher"</span>: <span class="str">"Edit"</span>,
+        <span class="fn">"hooks"</span>: [{
+          <span class="fn">"type"</span>: <span class="str">"command"</span>,
+          <span class="fn">"command"</span>: <span class="str">"bash .claude/hooks/block-source-modification.sh Edit \"$TOOL_INPUT_FILE_PATH\""</span>
+        }]
+      },
+      {
+        <span class="fn">"matcher"</span>: <span class="str">"Bash"</span>,
+        <span class="fn">"hooks"</span>: [{
+          <span class="fn">"type"</span>: <span class="str">"command"</span>,
+          <span class="fn">"command"</span>: <span class="str">"bash .claude/hooks/block-commit-protected-branch.sh Bash \"$TOOL_INPUT_COMMAND\""</span>
+        }]
+      }
+    ],
+    <span class="fn">"PostToolUse"</span>: [
+      {
+        <span class="fn">"matcher"</span>: <span class="str">"Edit|Write"</span>,
+        <span class="fn">"hooks"</span>: [{
+          <span class="fn">"type"</span>: <span class="str">"command"</span>,
+          <span class="fn">"command"</span>: <span class="str">"bash .claude/hooks/post-memory-update.sh \"$TOOL_NAME\" \"$TOOL_INPUT_FILE_PATH\""</span>
+        }]
+      }
+    ]
+  }
+}</pre>
+        </div>
+        <div class="sep"></div>
+        <div class="col" style="display:flex;flex-direction:column;gap:16px">
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:12px">Hook Events</div>
+            <table>
+              <tr><th>Event</th><th>Fires when</th></tr>
+              <tr><td>PreToolUse</td><td>Before Claude calls any tool</td></tr>
+              <tr><td class="w">PostToolUse</td><td>After a tool completes</td></tr>
+            </table>
+          </div>
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:12px">Env Variables Passed</div>
+            <table>
+              <tr><th>Variable</th><th>Value</th></tr>
+              <tr><td>$TOOL_NAME</td><td><span class="ic">Edit</span>, <span class="ic">Bash</span>, <span class="ic">Write</span>…</td></tr>
+              <tr><td>$TOOL_INPUT_FILE_PATH</td><td>File path (Edit/Write)</td></tr>
+              <tr><td>$TOOL_INPUT_COMMAND</td><td>Shell command (Bash)</td></tr>
+            </table>
+          </div>
+          <div class="callout" style="margin-top:4px;font-size:13px">
+            <strong>Matcher syntax:</strong> Use <span class="ic">|</span> for OR — <span class="ic">"Edit|Write"</span> fires on either tool.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 6 — EXIT CODES
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Hook Mechanics</div>
+      <h2>How Hooks <span class="hl">Control</span> Claude</h2>
+      <div class="slide-body">
+        <div class="col">
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <div class="layer" style="border-color:var(--red);background:rgba(248,113,113,0.05)">
+              <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:40px;color:var(--red);opacity:0.4;min-width:48px">2</div>
+              <div>
+                <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:17px;color:var(--bright);margin-bottom:4px">exit 2 — Block</div>
+                <div style="font-size:14px;color:var(--body);line-height:1.5">The tool call is <strong>cancelled</strong>. Claude receives stderr as the error message. <em>Only exit 2 blocks</em> — exit 1 is a non-blocking error and execution continues.</div>
+              </div>
+            </div>
+            <div class="layer" style="border-color:var(--green);background:rgba(74,222,128,0.05)">
+              <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:40px;color:var(--green);opacity:0.4;min-width:48px">0</div>
+              <div>
+                <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:17px;color:var(--bright);margin-bottom:4px">exit 0 — Allow</div>
+                <div style="font-size:14px;color:var(--body);line-height:1.5">The tool proceeds. stdout is added to Claude's context — use for <strong>reminders</strong> (PostToolUse). JSON on stdout can carry structured decisions.</div>
+              </div>
+            </div>
+            <div class="layer" style="border-color:var(--muted);background:rgba(61,74,92,0.1)">
+              <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:40px;color:var(--muted);opacity:0.4;min-width:48px">1</div>
+              <div>
+                <div style="font-family:'Outfit',sans-serif;font-weight:600;font-size:17px;color:var(--bright);margin-bottom:4px">exit 1 — Non-blocking error</div>
+                <div style="font-size:14px;color:var(--body);line-height:1.5">Execution <strong>continues</strong>. A notice appears in the transcript but the tool is not cancelled. Not useful for enforcement.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <pre class="sm"><span class="lang-tag">bash — block pattern (exit 2 + stderr)</span><span class="cm">#!/bin/bash</span>
+<span class="kw">if</span> [[ <span class="str">"$FILE_PATH"</span> == <span class="str">*"sources/"*</span> ]]; <span class="kw">then</span>
+  <span class="fn">echo</span> <span class="str">"BLOCKED: sources/ are immutable."</span> <span class="op">>&2</span>
+  <span class="kw">exit</span> <span class="num">2</span>   <span class="cm"># ← cancels the Edit</span>
+<span class="kw">fi</span>
+<span class="kw">exit</span> <span class="num">0</span>     <span class="cm"># ← allow</span></pre>
+
+          <pre class="sm" style="margin-top:14px"><span class="lang-tag">bash — reminder pattern (exit 0 + stdout)</span><span class="cm">#!/bin/bash</span>
+<span class="kw">if</span> [[ <span class="str">"$FILE_PATH"</span> == <span class="str">*"memory/"*</span> ]]; <span class="kw">then</span>
+  <span class="cm"># stdout at exit 0 → Claude's context</span>
+  <span class="fn">echo</span> <span class="str">"REMINDER: Update index.md + log.md"</span>
+<span class="kw">fi</span>
+<span class="kw">exit</span> <span class="num">0</span>     <span class="cm"># ← write still happens</span></pre>
+
+          <div class="callout" style="margin-top:14px;font-size:13px">
+            <strong>Source:</strong> <a href="https://code.claude.com/docs/en/hooks" style="color:var(--accent2);text-decoration:none">code.claude.com/docs/en/hooks</a> — "Only exit 2 blocks actions. Exit 1 is treated as non-blocking error and execution continues."
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 7 — HOOK 1
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Hook 1 of 3</div>
+      <h2>block-source-<span class="hl">modification</span>.sh</h2>
+      <div class="slide-body">
+        <div class="col">
+          <div class="hook-meta">
+            <span class="badge pre">PreToolUse</span>
+            <span class="badge block">Edit → sources/</span>
+          </div>
+          <div class="hook-section">
+            <div class="hook-label">What it does</div>
+            <p>Rejects any <strong>Edit</strong> call targeting a file under <span class="ic">sources/</span>.</p>
+          </div>
+          <div class="hook-section">
+            <div class="hook-label">Why it exists</div>
+            <p>Sources are the raw material of research. Once ingested, they must never change — otherwise findings that cite them become untrustworthy.<br><br>If Claude wants to "fix" a source, it should create a finding in <span class="ic">memory/findings/</span> instead.</p>
+          </div>
+          <div class="hook-section">
+            <div class="hook-label">Why Edit but not Write</div>
+            <p><strong>Write</strong> creates new files. <strong>Edit</strong> modifies existing ones. New source files are allowed; modifying them after creation is not.</p>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <pre><span class="lang-tag">bash</span><span class="cm">#!/bin/bash</span>
+<span class="var">TOOL_NAME</span>=<span class="str">"$1"</span>
+<span class="var">FILE_PATH</span>=<span class="str">"$2"</span>
+
+<span class="cm"># Only intercept Edit (not Write)</span>
+<span class="kw">if</span> [[ <span class="str">"$TOOL_NAME"</span> != <span class="str">"Edit"</span> ]]; <span class="kw">then</span>
+  <span class="kw">exit</span> <span class="num">0</span>
+<span class="kw">fi</span>
+
+<span class="cm"># Block edits to sources/ (skip .gitkeep)</span>
+<span class="kw">if</span> [[ <span class="str">"$FILE_PATH"</span> == <span class="str">*"sources/"*</span> \
+   && <span class="str">"$FILE_PATH"</span> != <span class="str">*".gitkeep"*</span> ]]; <span class="kw">then</span>
+  <span class="fn">echo</span> <span class="str">"BLOCKED: Source files are immutable
+after creation. Create a finding in
+memory/findings/ instead."</span>
+  <span class="kw">exit</span> <span class="num">1</span>
+<span class="kw">fi</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 8 — HOOK 2
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Hook 2 of 3</div>
+      <h2>block-commit-protected-<span class="hl">branch</span>.sh</h2>
+      <div class="slide-body">
+        <div class="col">
+          <div class="hook-meta">
+            <span class="badge pre">PreToolUse</span>
+            <span class="badge block">Bash → git commit</span>
+          </div>
+          <div class="hook-section">
+            <div class="hook-label">What it does</div>
+            <p>Rejects <strong>git commit</strong> commands when the current branch is <span class="ic">main</span>.</p>
+          </div>
+          <div class="hook-section">
+            <div class="hook-label">Why it exists</div>
+            <p>All research work happens on typed branches — <span class="ic">research/</span>, <span class="ic">hypothesis/</span>, <span class="ic">synthesis/</span>, <span class="ic">review/</span>.<br><br>Committing to main directly bypasses issue-tracking and the review workflow. The hook enforces this automatically rather than relying on Claude remembering the rule.</p>
+          </div>
+          <div class="callout" style="margin-top: 0">
+            <strong>Branch naming:</strong> <span class="ic">hypothesis/GH-7-attention-mechanisms</span>, <span class="ic">synthesis/GH-5-consolidate</span>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <pre><span class="lang-tag">bash</span><span class="cm">#!/bin/bash</span>
+<span class="var">COMMAND</span>=<span class="str">"$2"</span>
+
+<span class="cm"># Only intercept Bash calls</span>
+<span class="kw">if</span> [[ <span class="str">"$1"</span> != <span class="str">"Bash"</span> ]]; <span class="kw">then</span>
+  <span class="kw">exit</span> <span class="num">0</span>
+<span class="kw">fi</span>
+
+<span class="cm"># Check for git commit in the command</span>
+<span class="kw">if</span> [[ <span class="str">"$COMMAND"</span> == <span class="str">*"git commit"*</span> ]]; <span class="kw">then</span>
+  <span class="var">BRANCH</span>=$(<span class="fn">git rev-parse</span> --abbrev-ref HEAD <span class="num">2</span>>/dev/null)
+  <span class="kw">if</span> [[ <span class="str">"$BRANCH"</span> == <span class="str">"main"</span> ]]; <span class="kw">then</span>
+    <span class="fn">echo</span> <span class="str">"BLOCKED: Cannot commit to main.
+Create a branch first:
+  research/, hypothesis/,
+  synthesis/, or review/"</span>
+    <span class="kw">exit</span> <span class="num">1</span>
+  <span class="kw">fi</span>
+<span class="kw">fi</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 9 — HOOK 3
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Hook 3 of 3</div>
+      <h2>post-memory-<span class="hl">update</span>.sh</h2>
+      <div class="slide-body">
+        <div class="col">
+          <div class="hook-meta">
+            <span class="badge post">PostToolUse</span>
+            <span class="badge remind">Edit|Write → memory/</span>
+          </div>
+          <div class="hook-section">
+            <div class="hook-label">What it does</div>
+            <p>After any file write inside <span class="ic">memory/</span>, prints a reminder to update <span class="ic">memory/index.md</span> and append to <span class="ic">memory/log.md</span>.</p>
+          </div>
+          <div class="hook-section">
+            <div class="hook-label">Why it exists</div>
+            <p>The index and log are the <strong>consistency layer</strong> for working memory. Without them, pages become orphans (not findable) or operations go unrecorded.<br><br>This hook ensures Claude does both in the <em>same turn</em> — it can't skip them and move on.</p>
+          </div>
+          <div class="hook-section">
+            <div class="hook-label">Why exit 0, not exit 1</div>
+            <p>This is a <strong>reminder</strong>, not a block. The write already happened. Claude sees the output and acts on it in the same response.</p>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <pre><span class="lang-tag">bash</span><span class="cm">#!/bin/bash</span>
+<span class="var">TOOL_NAME</span>=<span class="str">"$1"</span>
+<span class="var">FILE_PATH</span>=<span class="str">"$2"</span>
+
+<span class="kw">if</span> [[ <span class="str">"$TOOL_NAME"</span> != <span class="str">"Edit"</span> \
+   && <span class="str">"$TOOL_NAME"</span> != <span class="str">"Write"</span> ]]; <span class="kw">then</span>
+  <span class="kw">exit</span> <span class="num">0</span>
+<span class="kw">fi</span>
+
+<span class="cm"># Check for memory/ writes,</span>
+<span class="cm"># excluding the index/log/registry</span>
+<span class="kw">if</span> [[
+  <span class="str">"$FILE_PATH"</span> == <span class="str">*"memory/"*</span> \
+  && <span class="str">"$FILE_PATH"</span> != <span class="str">*"memory/index.md"*</span> \
+  && <span class="str">"$FILE_PATH"</span> != <span class="str">*"memory/log.md"*</span> \
+  && <span class="str">"$FILE_PATH"</span> != <span class="str">*"entity-registry.json"*</span> \
+  && <span class="str">"$FILE_PATH"</span> != <span class="str">*".gitkeep"*</span>
+]]; <span class="kw">then</span>
+  <span class="fn">echo</span> <span class="str">"REMINDER: memory/ was modified.
+Update memory/index.md and
+append to memory/log.md."</span>
+<span class="kw">fi</span>
+<span class="kw">exit</span> <span class="num">0</span>   <span class="cm"># ← never blocks</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 10 — SKILLS
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Custom Commands</div>
+      <h2>Skills — <span class="hl2">Slash</span> Commands</h2>
+      <div class="slide-body">
+        <div class="col">
+          <ul class="bullets" style="margin-bottom:20px">
+            <li>
+              <div class="bullet-icon">→</div>
+              <div>Skills are <strong>markdown files</strong> in <span class="ic">.claude/skills/</span>. They define what Claude does when you type <span class="ic">/skill-name</span>.</div>
+            </li>
+            <li>
+              <div class="bullet-icon blue">→</div>
+              <div>Loaded <strong>on-demand</strong> — not at startup. CLAUDE.md is always in context; skills are only loaded when invoked.</div>
+            </li>
+            <li>
+              <div class="bullet-icon green">→</div>
+              <div>CLAUDE.md defines <em>what and why</em>. Skills define <em>how</em> — the step-by-step procedure for a specific command.</div>
+            </li>
+          </ul>
+          <pre class="xs"><span class="lang-tag">skill file format</span><span class="op">---</span>
+<span class="fn">name</span>: research
+<span class="fn">description</span>: <span class="str">Start a new research goal</span>
+<span class="fn">user_invocable</span>: <span class="kw">true</span>
+<span class="op">---</span>
+
+<span class="cm"># /research — Start a New Research Goal
+
+## Gather Information
+Ask the user for: goal, scope, criteria...
+
+## Workflow
+Step 1: Create GitHub issue
+Step 2: Create branch
+Step 3: Scaffold goal file
+...</span></pre>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <table>
+            <tr><th>Skill</th><th>Purpose</th></tr>
+            <tr><td>/research</td><td>New goal → GitHub issue → branch → goal file</td></tr>
+            <tr><td>/analyze</td><td>Ingest source → extract findings + entities</td></tr>
+            <tr><td>/synthesize</td><td>Consolidate findings → themes → output</td></tr>
+            <tr><td>/experiment</td><td>Design + run ML experiment → classify result</td></tr>
+            <tr><td>/distill</td><td>Extract decisions from settled findings</td></tr>
+            <tr><td>/evidence</td><td>Charts, tables, plots → <span class="ic">outputs/evidence/</span></td></tr>
+            <tr><td>/verify</td><td>Code that checks claims → <span class="ic">outputs/verification/</span></td></tr>
+            <tr><td>/examples</td><td>Worked examples → <span class="ic">outputs/examples/</span></td></tr>
+            <tr><td>/critique</td><td>Adversarial review + gap analysis</td></tr>
+            <tr><td>/lint</td><td>Memory health: orphans, staleness, contradictions</td></tr>
+            <tr><td>/read-pdf</td><td>Render PDF → images → read figures + tables</td></tr>
+            <tr><td style="color:var(--green)">/import</td><td><strong>Bulk-import an existing project</strong> — copies to <span class="ic">sources/</span>, extracts findings + entities, scaffolds memory in one pass</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 11 — REPO FOLDER LAYOUT
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Project Structure</div>
+      <h2>Repo <span class="hl2">Folder</span> Layout</h2>
+      <div class="slide-body">
+        <div class="col" style="flex:1.1">
+          <pre class="xs filetree"><span class="lang-tag">tree</span><span class="dir">research-flow-template/</span>
+<span class="op">├──</span> <span class="accent-file">CLAUDE.md</span>              <span class="comment"># always loaded — the brain</span>
+<span class="op">├──</span> <span class="dir">.claude/</span>               <span class="comment"># hooks, skills, settings</span>
+<span class="op">├──</span> <span class="dir">.github/ISSUE_TEMPLATE/</span> <span class="comment"># research-goal, hypothesis, finding</span>
+<span class="op">│</span>
+<span class="op">├──</span> <span class="dir">sources/</span>               <span class="comment"># ① IMMUTABLE raw material</span>
+<span class="op">├──</span> <span class="dir">memory/</span>                <span class="comment"># ② LLM-maintained wiki</span>
+<span class="op">│   ├──</span> <span class="file">index.md</span>           <span class="comment">#   catalog — updated every cycle</span>
+<span class="op">│   ├──</span> <span class="file">log.md</span>             <span class="comment">#   append-only operation log</span>
+<span class="op">│   ├──</span> <span class="file">entity-registry.json</span><span class="comment">#  dedup index</span>
+<span class="op">│   ├──</span> <span class="dir">entities/</span>          <span class="comment">#   people, orgs, concepts, tools</span>
+<span class="op">│   ├──</span> <span class="dir">findings/</span>          <span class="comment">#   discrete insights + citations</span>
+<span class="op">│   ├──</span> <span class="dir">themes/</span>            <span class="comment">#   cross-cutting patterns</span>
+<span class="op">│   ├──</span> <span class="dir">open-questions/</span>    <span class="comment">#   gaps to investigate</span>
+<span class="op">│   └──</span> <span class="dir">decisions/</span>         <span class="comment">#   distilled decisions</span>
+<span class="op">│</span>
+<span class="op">├──</span> <span class="dir">goals/</span>                 <span class="comment"># active research goal files</span>
+<span class="op">├──</span> <span class="dir">outputs/</span>               <span class="comment"># deliverables</span>
+<span class="op">│   ├──</span> <span class="dir">evidence/</span> <span class="dir">verification/</span> <span class="dir">examples/</span> <span class="dir">critiques/</span>
+<span class="op">│</span>
+<span class="op">├──</span> <span class="dir">experiments/</span>           <span class="comment"># ML training harness</span>
+<span class="op">│   ├──</span> <span class="file">run.py</span>             <span class="comment">#   primary entry point (YAML)</span>
+<span class="op">│   ├──</span> <span class="dir">configs/</span>           <span class="comment">#   baselines/, sweeps/</span>
+<span class="op">│   └──</span> <span class="dir">results/</span>           <span class="comment">#   run-log.jsonl + MLflow</span>
+<span class="op">│</span>
+<span class="op">└──</span> <span class="dir">docs/</span>                  <span class="comment"># ③ Schema / conventions</span></pre>
+        </div>
+        <div class="sep"></div>
+        <div class="col" style="flex:0.85">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:14px">Three-Layer Memory Model</div>
+          <div class="layers">
+            <div class="layer" style="border-color:rgba(249,115,22,0.3)">
+              <div class="layer-num">1</div>
+              <div class="layer-body">
+                <div class="layer-name">Sources</div>
+                <div class="layer-path">sources/</div>
+                <div class="layer-desc">Immutable raw material. Write-once, never edited. Hook enforces this.</div>
+              </div>
+            </div>
+            <div class="layer" style="border-color:rgba(56,189,248,0.3)">
+              <div class="layer-num">2</div>
+              <div class="layer-body">
+                <div class="layer-name">Working Memory</div>
+                <div class="layer-path">memory/</div>
+                <div class="layer-desc">LLM-maintained wiki. Updated every research cycle by Claude.</div>
+              </div>
+            </div>
+            <div class="layer" style="border-color:rgba(74,222,128,0.3)">
+              <div class="layer-num">3</div>
+              <div class="layer-body">
+                <div class="layer-name">Schema</div>
+                <div class="layer-path">CLAUDE.md</div>
+                <div class="layer-desc">Conventions and rules. Loaded by Claude on every session.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 12 — END TO END FLOW
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">End-to-End</div>
+      <h2>A Full Research <span class="hl">Session</span></h2>
+      <div class="slide-body">
+        <div class="col">
+          <div class="flow">
+            <div class="flow-step">
+              <div class="step-num">1</div>
+              <div><strong>You run <span class="ic">claude</span> in the repo root.</strong><br>Claude loads CLAUDE.md and .claude/settings.json automatically.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num blue">2</div>
+              <div><strong>You type <span class="ic">/research</span>.</strong><br>Claude follows <span class="ic">skills/research.md</span> — creates a GitHub issue, branch, goal file, and log entry.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num green">3</div>
+              <div><strong>You type <span class="ic">/analyze https://…</span>.</strong><br>Claude fetches the source, extracts findings + entities, writes to <span class="ic">memory/</span>.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num purple">4</div>
+              <div><strong>post-memory-update.sh fires</strong> (PostToolUse → Edit).<br>Prints reminder. Claude updates <span class="ic">index.md</span> + <span class="ic">log.md</span> in the same turn.</div>
+            </div>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <div class="flow">
+            <div class="flow-step">
+              <div class="step-num red">5</div>
+              <div><strong>If Claude edits <span class="ic">sources/</span></strong> — block-source-modification.sh fires, cancels the edit with an error message.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num red">6</div>
+              <div><strong>If Claude runs <span class="ic">git commit</span> on main</strong> — block-commit-protected-branch.sh blocks it.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num blue">7</div>
+              <div><strong>You type <span class="ic">/synthesize</span>.</strong><br>Claude reads all findings, builds themes, resolves contradictions, writes an output report.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num green">8</div>
+              <div><strong>Parallel agents.</strong><br>Spawn multiple agents on <span class="ic">hypothesis/</span> branches via <span class="ic">Agent({ isolation: "worktree" })</span>. Each works independently.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 13 — ADD YOUR OWN HOOKS
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Extending the System</div>
+      <h2>Adding Your Own <span class="hl">Hooks</span></h2>
+      <div class="slide-body">
+        <div class="col">
+          <ul class="bullets" style="margin-bottom:20px">
+            <li>
+              <div class="bullet-icon">1</div>
+              <div>Write a shell script in <span class="ic">.claude/hooks/</span>. Use exit 0 to allow, exit 1 to block.</div>
+            </li>
+            <li>
+              <div class="bullet-icon blue">2</div>
+              <div>Register it in <span class="ic">.claude/settings.json</span> under the appropriate event and matcher.</div>
+            </li>
+          </ul>
+          <pre class="sm"><span class="lang-tag">bash — new hook</span><span class="cm"># .claude/hooks/block-direct-output-write.sh</span>
+<span class="kw">if</span> [[ <span class="str">"$FILE_PATH"</span> == <span class="str">*"outputs/"*</span> ]]; <span class="kw">then</span>
+  <span class="fn">echo</span> <span class="str">"BLOCKED: Use /evidence, /verify,
+/examples, or /critique to produce
+outputs — not direct Write."</span>
+  <span class="kw">exit</span> <span class="num">1</span>
+<span class="kw">fi</span></pre>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <pre class="sm"><span class="lang-tag">json — wire it in settings.json</span>{
+  <span class="fn">"hooks"</span>: {
+    <span class="fn">"PreToolUse"</span>: [
+      {
+        <span class="fn">"matcher"</span>: <span class="str">"Write"</span>,
+        <span class="fn">"hooks"</span>: [{
+          <span class="fn">"type"</span>: <span class="str">"command"</span>,
+          <span class="fn">"command"</span>: <span class="str">"bash .claude/hooks/block-direct-output-write.sh Write \"$TOOL_INPUT_FILE_PATH\""</span>
+        }]
+      }
+    ]
+  }
+}</pre>
+          <div class="callout" style="margin-top:16px;font-size:13px">
+            Hooks run as the current user with access to the full shell environment. Keep them fast — they run on every matching tool call.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 14 — ADD YOUR OWN SKILLS
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">Extending the System</div>
+      <h2>Adding Your Own <span class="hl2">Skills</span></h2>
+      <div class="slide-body">
+        <div class="col">
+          <ul class="bullets" style="margin-bottom:20px">
+            <li>
+              <div class="bullet-icon">1</div>
+              <div>Create <span class="ic">.claude/skills/my-skill.md</span> with YAML frontmatter and a markdown body describing the workflow.</div>
+            </li>
+            <li>
+              <div class="bullet-icon blue">2</div>
+              <div>Invoke with <span class="ic">/my-skill</span> in the Claude Code prompt. No registration needed beyond the file.</div>
+            </li>
+            <li>
+              <div class="bullet-icon green">3</div>
+              <div>Skills can reference CLAUDE.md conventions freely — Claude has CLAUDE.md in context when the skill runs.</div>
+            </li>
+          </ul>
+          <div class="callout blue" style="font-size:13px">
+            <strong>Skills vs CLAUDE.md:</strong> If Claude needs to know something every session → CLAUDE.md. If it's a procedure only needed when invoked → skill.
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <pre><span class="lang-tag">markdown — skill file</span><span class="op">---</span>
+<span class="fn">name</span>: my-skill
+<span class="fn">description</span>: <span class="str">One-line description for the picker</span>
+<span class="fn">user_invocable</span>: <span class="kw">true</span>
+<span class="op">---</span>
+
+<span class="cm"># /my-skill — What This Does
+
+## Gather Information
+Ask the user for: ...
+
+## Workflow
+
+### Step 1
+Do X, Y, Z.
+
+### Step 2
+Write to memory/findings/ using the
+template in docs/memory-page-template.md.
+
+### Step 3
+Update memory/index.md and append
+to memory/log.md.
+
+## Output
+Report: what was done, what's next.</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 15 — /import SKILL
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">New skill</div>
+      <h2><span class="hl">/import</span> — Bring In an Existing Project</h2>
+      <div class="slide-body">
+        <div class="col">
+          <div class="callout blue" style="margin-bottom:20px;font-size:14px">
+            <strong>/analyze</strong> ingests one source at a time. <strong>/import</strong> bulk-ingests a whole project in one pass — maps the structure, classifies artifacts, builds memory.
+          </div>
+          <ul class="bullets">
+            <li>
+              <div class="bullet-icon">1</div>
+              <div><strong>Accepts local path, git URL, or glob</strong> — <span class="ic">../my-project</span>, <span class="ic">https://github.com/org/repo</span>, <span class="ic">./docs/**/*.md</span></div>
+            </li>
+            <li>
+              <div class="bullet-icon blue">2</div>
+              <div><strong>Classifies artifacts into tiers</strong> — Primary docs, Code, Data, Config, Skip. Copies Primary + Code to <span class="ic">sources/&lt;slug&gt;/</span>.</div>
+            </li>
+            <li>
+              <div class="bullet-icon green">3</div>
+              <div><strong>Extracts entities and findings</strong> from READMEs, notebooks, design docs, comments — with verification gates + FUNGI counter-arguments.</div>
+            </li>
+            <li>
+              <div class="bullet-icon purple">4</div>
+              <div><strong>Mines open questions</strong> from TODO/FIXME comments, "Future Work" sections, skipped tests, missing docs.</div>
+            </li>
+          </ul>
+        </div>
+        <div class="sep"></div>
+        <div class="col" style="display:flex;flex-direction:column;gap:16px">
+          <div>
+            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:12px">Artifact Tiers</div>
+            <table>
+              <tr><th>Tier</th><th>What</th><th>Action</th></tr>
+              <tr><td>Primary</td><td>READMEs, notes, notebooks, papers</td><td>Copy + deep analysis</td></tr>
+              <tr><td class="w">Code</td><td>Source files (.py, .ts, …)</td><td>Copy key files + summarize</td></tr>
+              <tr><td style="color:var(--purple)">Config</td><td>pyproject.toml, YAML, package.json</td><td>Copy + extract deps</td></tr>
+              <tr><td style="color:var(--dim)">Data</td><td>Datasets, CSVs, large files</td><td>Pointer file only</td></tr>
+              <tr><td style="color:var(--muted)">Skip</td><td>.git/, node_modules/, __pycache__/</td><td>Ignore</td></tr>
+            </table>
+          </div>
+          <pre class="xs"><span class="lang-tag">usage</span><span class="cm"># Local project</span>
+/import ../my-existing-project
+
+<span class="cm"># Git repo (cloned to /tmp/ first)</span>
+/import https://github.com/org/repo
+
+<span class="cm"># Just the docs</span>
+/import ./my-project/docs/**/*.md
+
+<span class="cm"># After import, continue with:</span>
+/analyze      <span class="cm"># deep-dive a specific file</span>
+/research     <span class="cm"># define a goal around it</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE 16 — /import HOW IT WORKS
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-content">
+      <div class="slide-num"></div>
+      <div class="slide-label">/import — step by step</div>
+      <h2><span class="hl">/import</span> — How It Works</h2>
+      <div class="slide-body">
+        <div class="col">
+          <div class="flow">
+            <div class="flow-step">
+              <div class="step-num">1</div>
+              <div><strong>Resolve &amp; inspect the source.</strong> List the directory or clone the git repo to <span class="ic">/tmp/import-&lt;slug&gt;</span>. Build a map of file types and sizes.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num blue">2</div>
+              <div><strong>Classify artifacts into tiers.</strong> Primary docs → deep analysis. Code → architecture summary. Data → pointer stub. <span class="ic">node_modules/</span>, <span class="ic">.git/</span> → skipped.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num green">3</div>
+              <div><strong>Copy to <span class="ic">sources/&lt;slug&gt;/</span></strong> with a <span class="ic">MANIFEST.md</span> listing every file imported and every file skipped (with reason). Sources are immutable after this step.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num purple">4</div>
+              <div><strong>Extract entities.</strong> Check <span class="ic">entity-registry.json</span> before creating. Tools, libraries, models, datasets, authors — each gets a page in <span class="ic">memory/entities/</span>.</div>
+            </div>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="col">
+          <div class="flow">
+            <div class="flow-step">
+              <div class="step-num" style="background:var(--accent2);color:#000">5</div>
+              <div><strong>Extract findings</strong> from READMEs, notebooks, design notes, and code comments. Every finding gets a verification gate (<span class="ic">source</span> / <span class="ic">analysis</span> / <span class="ic">unverified</span>) and a FUNGI counter-argument.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num red">6</div>
+              <div><strong>Mine open questions</strong> from TODO/FIXME comments, "Future Work" sections, skipped tests, and missing documentation. Each goes to <span class="ic">memory/open-questions/</span>.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num" style="background:var(--purple);color:#000">7</div>
+              <div><strong>Update memory index &amp; log.</strong> All new pages catalogued in <span class="ic">memory/index.md</span>. The full operation appended to <span class="ic">memory/log.md</span>.</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num green">8</div>
+              <div><strong>Optionally create a research goal.</strong> If you want a structured research branch around the imported project, /import can hand off to <span class="ic">/research</span> automatically.</div>
+            </div>
+          </div>
+          <div class="callout blue" style="margin-top:14px;font-size:13px">
+            After /import, use <strong>/analyze</strong> to deep-dive any specific file, or <strong>/experiment</strong> if the project has ML training code.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE — REFERENCES / FURTHER READING
+    ═══════════════════════════════════════════════ -->
+    <div class="slide" style="padding:56px 64px">
+      <div class="slide-num"></div>
+      <div class="eyebrow">official docs</div>
+      <h2 style="font-size:32px;margin:0 0 28px">Further Reading</h2>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:900px">
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 22px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:10px">Overview</div>
+          <div style="font-size:13px;color:var(--body);line-height:1.7;margin-bottom:10px">What Claude Code is, how it works, and the core concepts (CLAUDE.md, hooks, skills, MCP).</div>
+          <a href="https://docs.anthropic.com/en/docs/claude-code/overview" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);text-decoration:none;word-break:break-all">docs.anthropic.com/en/docs/claude-code/overview</a>
+        </div>
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 22px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:10px">Hooks</div>
+          <div style="font-size:13px;color:var(--body);line-height:1.7;margin-bottom:10px">Full hook event types (PreToolUse, PostToolUse, SessionStart, UserPromptSubmit, …), exit code semantics, environment variables.</div>
+          <a href="https://docs.anthropic.com/en/docs/claude-code/hooks" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);text-decoration:none;word-break:break-all">docs.anthropic.com/en/docs/claude-code/hooks</a>
+        </div>
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 22px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:10px">Slash Commands (Skills)</div>
+          <div style="font-size:13px;color:var(--body);line-height:1.7;margin-bottom:10px">Creating custom slash commands, <code style="font-family:'DM Mono',monospace;font-size:11px;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px">.claude/commands/</code> structure, argument passing with <code style="font-family:'DM Mono',monospace;font-size:11px;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px">$ARGUMENTS</code>.</div>
+          <a href="https://docs.anthropic.com/en/docs/claude-code/slash-commands" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);text-decoration:none;word-break:break-all">docs.anthropic.com/en/docs/claude-code/slash-commands</a>
+        </div>
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 22px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:10px">Memory &amp; CLAUDE.md</div>
+          <div style="font-size:13px;color:var(--body);line-height:1.7;margin-bottom:10px">CLAUDE.md scopes (managed policy, project, user, local), memory types, and how context is loaded at session start.</div>
+          <a href="https://docs.anthropic.com/en/docs/claude-code/memory" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);text-decoration:none;word-break:break-all">docs.anthropic.com/en/docs/claude-code/memory</a>
+        </div>
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 22px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent2);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:10px">Settings</div>
+          <div style="font-size:13px;color:var(--body);line-height:1.7;margin-bottom:10px">Full settings.json reference: permission modes, allowed tools, hook wiring, MCP servers, and environment config.</div>
+          <a href="https://docs.anthropic.com/en/docs/claude-code/settings" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);text-decoration:none;word-break:break-all">docs.anthropic.com/en/docs/claude-code/settings</a>
+        </div>
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 22px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:10px">This Template</div>
+          <div style="font-size:13px;color:var(--body);line-height:1.7;margin-bottom:10px">Scaffold a new research project with the <code style="font-family:'DM Mono',monospace;font-size:11px;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px">create-research-flow</code> CLI — creates the repo, GitHub Project board, and opens Claude Code.</div>
+          <a href="https://github.com/dangquan1402/create-research-flow" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);text-decoration:none;word-break:break-all">github.com/dangquan1402/create-research-flow</a>
+        </div>
+
+      </div>
+
+      <div style="margin-top:24px;max-width:900px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);line-height:1.7;border-left:2px solid var(--border);padding-left:14px">
+        Key facts from the official docs worth knowing: <span style="color:var(--body)">exit 2 blocks</span> (exit 1 is non-blocking); hook error messages must go to <span style="color:var(--body)">stderr</span>; CLAUDE.md has four scopes — managed policy &gt; project &gt; user &gt; local; hook events include SessionStart, UserPromptSubmit, SubagentStart, PreCompact, and more beyond just PreToolUse/PostToolUse.
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE — PREREQUISITES
+    ═══════════════════════════════════════════════ -->
+    <div class="slide" style="padding:48px 64px">
+      <div class="slide-num"></div>
+      <div class="eyebrow">before you begin</div>
+      <h2 style="margin:0 0 24px">Prerequisites</h2>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:960px">
+
+        <!-- LEFT col: required -->
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px">Required</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--bright)">Claude Code</span>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.25);padding:2px 8px;border-radius:4px">CLI</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">The AI agent that drives everything. Requires a <strong style="color:var(--body)">Claude.ai subscription</strong> (Pro or Max) — sign in with <code style="font-size:11px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px">claude</code> after install.</div>
+              <code style="font-family:'DM Mono',monospace;font-size:11px;color:var(--body);background:rgba(255,255,255,0.05);padding:5px 10px;border-radius:4px;display:block">npm install -g @anthropic-ai/claude-code &amp;&amp; claude</code>
+            </div>
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--bright)">Node.js ≥ 18</span>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:rgba(255,255,255,0.05);border:1px solid var(--border);padding:2px 8px;border-radius:4px">for npx</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Needed to run the <code style="font-size:11px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px">npx create-research-flow</code> scaffolder.</div>
+              <code style="font-family:'DM Mono',monospace;font-size:11px;color:var(--body);background:rgba(255,255,255,0.05);padding:5px 10px;border-radius:4px;display:block">node --version  <span style="color:var(--muted)"># should print v18+</span></code>
+            </div>
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--bright)">Python ≥ 3.12 + uv</span>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent2);background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.25);padding:2px 8px;border-radius:4px">experiment harness</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">For <code style="font-size:11px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px">uv sync</code> and the PDF tooling. Add your own ML framework (torch, jax, etc.) as needed.</div>
+              <code style="font-family:'DM Mono',monospace;font-size:11px;color:var(--body);background:rgba(255,255,255,0.05);padding:5px 10px;border-radius:4px;display:block">curl -LsSf https://astral.sh/uv/install.sh | sh</code>
+            </div>
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--bright)">GitHub CLI (gh)</span>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);padding:2px 8px;border-radius:4px">issue tracking</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Creates the GitHub repo, Project board, labels, and links branches to issues.</div>
+              <code style="font-family:'DM Mono',monospace;font-size:11px;color:var(--body);background:rgba(255,255,255,0.05);padding:5px 10px;border-radius:4px;display:block">brew install gh  &amp;&amp;  gh auth login</code>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- RIGHT col: optional + env -->
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px">Optional</div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--bright)">Google Chrome</span>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:rgba(255,255,255,0.05);border:1px solid var(--border);padding:2px 8px;border-radius:4px">PDF export</span>
+              </div>
+              <div style="font-size:12px;color:var(--muted)">Only needed to re-export this deck to PDF via headless Chrome. Not required for research work.</div>
+            </div>
+
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:12px">Authentication</div>
+          <div class="code-block" style="font-size:12px;line-height:1.9">
+            <span class="cm"># Claude Code — log in with your claude.ai account</span>
+<span class="kw">claude</span>  <span style="color:var(--muted)"># opens browser auth on first run</span>
+
+<span class="cm"># GitHub — for Project board &amp; issue tracking</span>
+<span class="kw">gh</span> auth login  <span style="color:var(--muted)"># sets GITHUB_TOKEN automatically</span>
+          </div>
+
+          <div class="callout" style="margin-top:14px;font-size:12px;color:var(--body)">
+            <strong>Check everything:</strong>
+            <code style="font-family:'DM Mono',monospace;font-size:11px;background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px">node -v &amp;&amp; gh --version &amp;&amp; uv --version &amp;&amp; claude --version</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE — QUICK START
+    ═══════════════════════════════════════════════ -->
+    <div class="slide" style="padding:48px 64px">
+      <div class="slide-num"></div>
+      <div class="eyebrow">quick start</div>
+      <h2 style="margin:0 0 28px">From Zero to Research</h2>
+
+      <div style="display:flex;flex-direction:column;gap:14px;max-width:860px">
+
+        <!-- Step 1 -->
+        <div style="display:grid;grid-template-columns:32px 1fr;gap:16px;align-items:start">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px">
+            <div style="font-size:13px;color:var(--bright);font-weight:600;margin-bottom:6px">Scaffold your project</div>
+            <code style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);display:block;margin-bottom:6px">npx create-research-flow my-project</code>
+            <div style="font-size:12px;color:var(--muted)">Clones the template, creates a GitHub repo + Project board, seeds labels, runs <code style="font-size:11px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px">uv sync</code> (lightweight deps only — add your own ML framework), and launches <code style="font-size:11px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px">claude</code>.</div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div style="display:grid;grid-template-columns:32px 1fr;gap:16px;align-items:start">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--accent2);color:#07090e;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px">
+            <div style="font-size:13px;color:var(--bright);font-weight:600;margin-bottom:6px">Open Claude Code in the repo</div>
+            <code style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent2);display:block;margin-bottom:6px">cd my-project &nbsp;&nbsp;&&  &nbsp;claude</code>
+            <div style="font-size:12px;color:var(--muted)"><code style="font-size:11px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px">CLAUDE.md</code> and <code style="font-size:11px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px">settings.json</code> auto-load. Hooks are live. Skills are ready.</div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div style="display:grid;grid-template-columns:32px 1fr;gap:16px;align-items:start">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--green);color:#07090e;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px">
+            <div style="font-size:13px;color:var(--bright);font-weight:600;margin-bottom:10px">Define your research goal</div>
+            <code style="font-family:'DM Mono',monospace;font-size:12px;color:var(--green);display:block;margin-bottom:6px">/research</code>
+            <div style="font-size:12px;color:var(--muted)">Creates a GitHub issue, a <code style="font-size:11px;background:rgba(255,255,255,0.06);padding:1px 4px;border-radius:3px">research/</code> branch, and a goal file. Everything that follows is scoped to this goal.</div>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div style="display:grid;grid-template-columns:32px 1fr;gap:16px;align-items:start">
+          <div style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.12);color:var(--bright);font-family:'DM Mono',monospace;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">4</div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 18px">
+            <div style="font-size:13px;color:var(--bright);font-weight:600;margin-bottom:10px">Run the loop</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+              <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent2);background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.25);padding:4px 10px;border-radius:5px">/analyze</span>
+              <span style="color:var(--border);font-size:16px">or</span>
+              <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent2);background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.25);padding:4px 10px;border-radius:5px">/import</span>
+              <span style="color:var(--muted);font-size:18px">→</span>
+              <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--green);background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);padding:4px 10px;border-radius:5px">/experiment</span>
+              <span style="color:var(--muted);font-size:18px">→</span>
+              <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--accent);background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.25);padding:4px 10px;border-radius:5px">/synthesize</span>
+              <span style="color:var(--muted);font-size:18px">→</span>
+              <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);background:rgba(255,255,255,0.05);border:1px solid var(--border);padding:4px 10px;border-radius:5px">/distill</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-top:8px">Ingest sources, run experiments, consolidate findings, extract decisions. Repeat until the goal is answered.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         SLIDE FINAL — THIS IS A STARTER
+    ═══════════════════════════════════════════════ -->
+    <div class="slide slide-title" style="justify-content:center;align-items:flex-start">
+      <div class="slide-num"></div>
+      <div class="eyebrow">remember</div>
+      <div class="title-heading">This is a<br><span>starter.</span></div>
+      <div class="title-sub" style="max-width:640px;font-size:17px;line-height:1.7;color:var(--body)">
+        The flow, skills, hooks, and CLAUDE.md in this template are a <strong style="color:var(--bright)">simple baseline</strong> — not a prescription. Every research project is different.
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:36px;max-width:760px">
+        <div style="background:rgba(249,115,22,0.08);border:1px solid rgba(249,115,22,0.25);border-radius:8px;padding:18px 20px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:8px">CLAUDE.md</div>
+          <div style="font-size:13px;color:var(--body);line-height:1.6">Rewrite the research loop to match <em>your</em> methodology. Add sections as you discover what Claude consistently gets wrong.</div>
+        </div>
+        <div style="background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.25);border-radius:8px;padding:18px 20px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:8px">Hooks</div>
+          <div style="font-size:13px;color:var(--body);line-height:1.6">Add hooks for invariants <em>your</em> project needs. Remove the ones that don't apply. Each hook should exist because something broke without it.</div>
+        </div>
+        <div style="background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.25);border-radius:8px;padding:18px 20px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--accent2);text-transform:uppercase;letter-spacing:0.14em;margin-bottom:8px">Skills</div>
+          <div style="font-size:13px;color:var(--body);line-height:1.6">Extend or replace skills to match <em>your</em> workflow. Add domain-specific procedures. Delete phases you don't use.</div>
+        </div>
+      </div>
+
+      <div style="margin-top:32px;max-width:640px;font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);line-height:1.8;border-left:2px solid var(--border);padding-left:16px">
+        The only thing that should stay constant: <span style="color:var(--body)">sources/ are immutable</span>, <span style="color:var(--body)">memory/ is the single source of truth</span>, and <span style="color:var(--body)">Claude reads CLAUDE.md to know how to behave</span>. Everything else is up to you.
+      </div>
+
+      <div class="title-meta" style="margin-top:auto">
+        <span class="tag">CLAUDE.md — yours to edit</span>
+        <span class="tag">hooks — yours to add</span>
+        <span class="tag">skills — yours to extend</span>
+      </div>
+    </div>
+
+  </div><!-- /slides-wrapper -->
+</div><!-- /deck -->
+
+<!-- ─── NAV ─── -->
+<nav class="nav">
+  <button class="nav-btn" id="prev" aria-label="Previous">&#8592;</button>
+  <div class="nav-dots" id="dots"></div>
+  <div class="nav-counter" id="counter">01 / 15</div>
+  <button class="nav-btn" id="next" aria-label="Next">&#8594;</button>
+</nav>
+
+<div class="key-hint"><kbd>←</kbd> <kbd>→</kbd> <kbd>space</kbd></div>
+
+<script>
+  // Derive total from DOM — adding slides never requires updating this value
+  const slideEls = document.querySelectorAll('.slides-wrapper .slide');
+  const TOTAL = slideEls.length;
+  let current = 0;
+
+  // Auto-number every slide
+  slideEls.forEach((s, i) => {
+    const el = s.querySelector('.slide-num');
+    if (el) el.textContent = `${String(i + 1).padStart(2, '0')} / ${String(TOTAL).padStart(2, '0')}`;
+  });
+
+  const wrapper = document.getElementById('slides');
+  const counter = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+  const dotsContainer = document.getElementById('dots');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+
+  // Build dots
+  for (let i = 0; i < TOTAL; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (i === 0 ? ' active' : '');
+    dot.addEventListener('click', () => go(i));
+    dotsContainer.appendChild(dot);
+  }
+
+  function go(n) {
+    current = Math.max(0, Math.min(TOTAL - 1, n));
+    wrapper.style.transform = `translateX(-${current * 100}vw)`;
+
+    const pad = String(current + 1).padStart(2, '0');
+    counter.textContent = `${pad} / ${String(TOTAL).padStart(2, '0')}`;
+
+    const pct = ((current + 1) / TOTAL) * 100;
+    progress.style.width = pct + '%';
+
+    document.querySelectorAll('.dot').forEach((d, i) => {
+      d.classList.toggle('active', i === current);
+    });
+
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === TOTAL - 1;
+  }
+
+  prevBtn.addEventListener('click', () => go(current - 1));
+  nextBtn.addEventListener('click', () => go(current + 1));
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(current + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); go(current - 1); }
+    if (e.key === 'Home') go(0);
+    if (e.key === 'End') go(TOTAL - 1);
+  });
+
+  // Touch/swipe
+  let touchX = null;
+  document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) go(dx < 0 ? current + 1 : current - 1);
+    touchX = null;
+  });
+
+  // TOC click-to-jump: data-goto is the 1-based slide number
+  document.querySelectorAll('.toc-item[data-goto]').forEach(el => {
+    el.addEventListener('click', () => go(parseInt(el.dataset.goto, 10) - 1));
+  });
+
+  go(0);
+</script>
+</body>
+</html>

@@ -49,8 +49,19 @@ pyproject.toml       # uv-managed Python deps (mlx, mlflow, pymupdf, ...)
 ## Read next
 
 - [`CLAUDE.md`](CLAUDE.md) — the research loop, memory rules, git flow, conventions
+- [`docs/claude-code-guide.md`](docs/claude-code-guide.md) — full explanation of every Claude Code primitive used here
+- [`docs/deck.html`](docs/deck.html) — 21-slide interactive deck (open in browser)
+- [`docs/deck.pdf`](docs/deck.pdf) — PDF version of the deck
 - [`docs/git-workflow.md`](docs/git-workflow.md) — branch types and naming
 - [`docs/memory-page-template.md`](docs/memory-page-template.md) — frontmatter for findings/entities/themes
+
+To re-export the PDF after editing the deck:
+```bash
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless=new --disable-gpu --no-sandbox \
+  --print-to-pdf=docs/deck.pdf --no-pdf-header-footer \
+  "file://$(pwd)/docs/deck.html"
+```
 
 ## License
 
