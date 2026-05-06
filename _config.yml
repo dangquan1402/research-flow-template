@@ -1,9 +1,6 @@
 title: Research Flow
 description: Agentic research system with persistent working memory and Claude Code skills.
-remote_theme: just-the-docs/just-the-docs@v0.10.0
-
-url: ""
-baseurl: "/research-flow-template"
+theme: just-the-docs
 
 color_scheme: dark
 
@@ -27,5 +24,4 @@ exclude:
   - goals/
   - outputs/
   - .claude/
-  - .github/workflows/
   - "*.sh"

@@ -1,7 +1,5 @@
 # research-flow-template
 
-**[📖 Read the docs →](https://dangquan1402.github.io/research-flow-template)**
-
 Skeleton for an agentic research project with persistent working memory, Claude Code skills, and a GitHub Project board for tracking goals → hypotheses → findings.
 
 **This is a template repo.** Use the scaffolder to start a new project:
@@ -58,6 +56,14 @@ The three-layer memory model:
 - [`docs/claude-code-guide.md`](docs/claude-code-guide.md) — full explanation of every Claude Code primitive
 - [`docs/git-workflow.md`](docs/git-workflow.md) — branch types and naming
 - [`docs/memory-page-template.md`](docs/memory-page-template.md) — frontmatter for memory pages
+
+## Browse docs locally
+
+```bash
+gem install bundler && bundle install
+bundle exec jekyll serve
+# open http://localhost:4000
+```
 
 ## License
 
