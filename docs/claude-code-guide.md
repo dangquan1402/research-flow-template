@@ -39,7 +39,7 @@ When you run `claude` in this repo, it loads the configuration from `.claude/` a
 - Memory structure rules (what goes where, what frontmatter is required)
 - Git branch conventions
 - Quality standards (FUNGI counter-arguments, verification gates, confidence levels)
-- ML experiment workflow and failure classification
+- Experiment workflow and failure classification
 
 **Rule:** Everything that Claude must always know or always follow belongs in CLAUDE.md. Things that are step-by-step procedures for specific commands belong in skills.
 
@@ -95,8 +95,9 @@ Each entry has a `matcher` (which tool to intercept) and a `command` (what to ru
 |---|---|---|
 | `PreToolUse` | Before Claude calls a tool | Block dangerous operations |
 | `PostToolUse` | After Claude calls a tool | Trigger reminders or side effects |
-| `PreBash` | Before any shell command | Validate commands |
-| `PostBash` | After any shell command | Log or react to output |
+| `SessionStart` | When a Claude Code session begins | Greet, run checks |
+| `UserPromptSubmit` | When the user submits a message | Validate or augment input |
+| `PreCompact` | Before context is compacted | Save state |
 
 **How matchers work:**
 
@@ -123,9 +124,10 @@ Hooks receive context via environment variables in the command string:
 | Exit code | Effect |
 |---|---|
 | `0` | Allow the tool to proceed |
-| `1` | Block the tool — Claude sees the script's stdout as an error message |
+| `1` | Non-blocking error — execution continues, Claude sees stdout as context |
+| `2` | **Block** the tool — Claude sees the script's stderr as the error message |
 
-This is how hooks enforce rules: they print a human-readable message and `exit 1`.
+This is how hooks enforce rules: they print a human-readable message to **stderr** and `exit 2`.
 
 ---
 
@@ -139,12 +141,12 @@ This repo uses three hooks that encode hard invariants from CLAUDE.md.
 
 **Why:** Sources are the raw material of research. Once ingested, they must never change — otherwise findings that cite them become untrustworthy. If Claude wants to "fix" a source, it should create a finding in `memory/findings/` instead.
 
-**How:** Checks if `$TOOL_INPUT_FILE_PATH` contains `sources/` and exits 1 if so.
+**How:** Checks if `$TOOL_INPUT_FILE_PATH` contains `sources/` and exits 2 if so.
 
 ```bash
 if [[ "$FILE_PATH" == *"sources/"* && "$FILE_PATH" != *".gitkeep"* ]]; then
-  echo "BLOCKED: Source files are immutable..."
-  exit 1
+  echo "BLOCKED: Source files are immutable..." >&2
+  exit 2
 fi
 ```
 
@@ -158,14 +160,14 @@ Note: `Write` is not blocked — only `Edit`. The `Write` tool creates new files
 
 **Why:** All research work happens on typed branches (`research/`, `hypothesis/`, `synthesis/`, `review/`). Committing to main directly bypasses the issue-tracking and review workflow. The hook enforces this automatically rather than relying on Claude remembering the rule.
 
-**How:** Parses `$TOOL_INPUT_COMMAND` for `git commit`, then checks `git rev-parse --abbrev-ref HEAD`. If the branch is `main`, it exits 1.
+**How:** Parses `$TOOL_INPUT_COMMAND` for `git commit`, then checks `git rev-parse --abbrev-ref HEAD`. If the branch is `main`, it exits 2.
 
 ```bash
 if [[ "$COMMAND" == *"git commit"* ]]; then
   BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
   if [[ "$BRANCH" == "main" ]]; then
-    echo "BLOCKED: Cannot commit directly to main..."
-    exit 1
+    echo "BLOCKED: Cannot commit directly to main..." >&2
+    exit 2
   fi
 fi
 ```
@@ -223,7 +225,7 @@ The YAML frontmatter tells Claude Code the skill name and whether users can invo
 | `/research` | Define a new research goal, create GitHub issue, branch, goal file |
 | `/analyze` | Ingest a source (URL/file/topic), extract findings and entities, update memory |
 | `/synthesize` | Consolidate findings into themes, resolve contradictions, produce output |
-| `/experiment` | Design and run an ML experiment, classify results, write finding |
+| `/experiment` | Design hypothesis, run experiment code, classify results, write finding |
 | `/distill` | Extract decisions from settled findings into `memory/decisions/` |
 | `/evidence` | Generate charts/tables/plots backing key claims → `outputs/evidence/` |
 | `/verify` | Write code to check claims programmatically → `outputs/verification/` |
@@ -265,12 +267,10 @@ research-flow-template/
 │   ├── examples/
 │   └── critiques/
 │
-├── experiments/               # ML training harness
-│   ├── run.py                 # Primary entry point (YAML-driven)
-│   ├── train.py               # Direct CLI entry point
-│   ├── configs/               # Experiment configs (baselines/, sweeps/)
-│   ├── results/               # Run logs and JSON results
-│   └── checkpoints/           # Saved model weights
+├── experiments/               # Blank scaffold — add your own training code
+│   ├── configs/baselines/     # Baseline configs (user-defined)
+│   ├── configs/sweeps/        # Sweep configs (user-defined)
+│   └── results/               # run-log.jsonl + result files
 │
 └── docs/                      # Human-readable documentation
     ├── claude-code-guide.md   # This file
@@ -318,7 +318,7 @@ Here's what happens end-to-end when you start a research session:
 
 To add a new hook:
 
-1. Write a shell script in `.claude/hooks/`. Exit 0 to allow, exit 1 to block.
+1. Write a shell script in `.claude/hooks/`. Exit 0 to allow, exit 2 to block (message to stderr). Exit 1 is non-blocking.
 2. Register it in `.claude/settings.json` under the appropriate event and matcher.
 
 Example — block writing to `outputs/` directly (require it to go through a skill):
@@ -326,8 +326,8 @@ Example — block writing to `outputs/` directly (require it to go through a ski
 ```bash
 # .claude/hooks/block-direct-output-write.sh
 if [[ "$FILE_PATH" == *"outputs/"* ]]; then
-  echo "BLOCKED: Use /evidence, /verify, /examples, or /critique to produce outputs."
-  exit 1
+  echo "BLOCKED: Use /evidence, /verify, /examples, or /critique to produce outputs." >&2
+  exit 2
 fi
 ```
 
