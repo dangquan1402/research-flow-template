@@ -53,7 +53,8 @@ Each skill is a markdown file in `.claude/skills/` — a step-by-step procedure 
 
 ## Read Next
 
-- [Getting Started](getting-started) — prerequisites and first session walkthrough
+- [Claude Code Quick Start](claude-code-quickstart) — new to Claude Code? Start here (install, login, slash commands, permission modes)
+- [Getting Started](getting-started) — prerequisites and first session walkthrough for this template
 - [Claude Code Guide](claude-code-guide) — every primitive explained (hooks, skills, CLAUDE.md)
 - [Git Workflow](git-workflow) — branch strategy and multi-agent dispatch
 - [Memory Templates](memory-page-template) — frontmatter reference for memory pages
