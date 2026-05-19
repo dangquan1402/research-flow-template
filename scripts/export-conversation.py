@@ -169,121 +169,191 @@ def find_slice(events: list[dict], start_prompt: str, end_prompt: str | None) ->
 
 CSS = """
 :root {
-  --fg: #1f2328;
-  --muted: #656d76;
-  --border: #d8dee4;
-  --bg: #ffffff;
-  --bg-sub: #f6f8fa;
-  --user: #0969da;
-  --thinking: #8250df;
-  --error: #cf222e;
-  --code-bg: #f6f8fa;
-  --code-fg: #1f2328;
+  --bg: #1c1c1c;
+  --bg-soft: #232323;
+  --fg: #d4d4d4;
+  --muted: #888888;
+  --dim: #5a5a5a;
+  --user: #58a6ff;        /* blue '>' prompt */
+  --dot: #d4d4d4;         /* '⏺' for assistant text */
+  --tool: #d39e3a;        /* '⏺' for tool calls — Claude Code amber */
+  --result: #6a7079;      /* '⎿' for tool output gutter */
+  --thinking: #b58bd6;
+  --error: #f47067;
+  --accent: #2ea043;
+  --rule: #2a2a2a;
 }
-@page { size: A4; margin: 18mm 16mm; }
+@page { size: A4; margin: 14mm 14mm; }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
-  font-size: 15px; line-height: 1.65; color: var(--fg);
-  max-width: 740px; margin: 0 auto; padding: 56px 24px 96px;
+  font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco,
+               Consolas, "Liberation Mono", monospace;
+  font-size: 13px; line-height: 1.55; color: var(--fg);
+  max-width: 880px; margin: 0 auto; padding: 36px 28px 80px;
   background: var(--bg);
-  font-feature-settings: "kern", "liga", "calt";
+  font-feature-settings: "calt" 0;  /* no fancy ligatures, terminal feel */
+  -webkit-font-smoothing: antialiased;
 }
-h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4px; }
-.intro { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 0 0 48px; padding: 0; border: none; background: transparent; }
-.intro code { font-size: 13px; }
-hr.section { border: 0; border-top: 1px solid var(--border); margin: 56px 0; }
-
-/* Turns */
-.turn { margin: 28px 0; padding: 0 0 0 20px; border-left: 2px solid transparent; }
-.turn .role {
-  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
-  color: var(--muted); margin-bottom: 6px;
+h1 {
+  font-size: 16px; font-weight: 600; color: var(--fg);
+  margin: 0 0 4px; letter-spacing: 0; font-family: inherit;
 }
-.turn.user { border-left-color: var(--user); }
-.turn.user .role { color: var(--user); }
-.turn.assistant { border-left-color: var(--border); }
-.turn.tool_result { display: none; }  /* tool results shown inside their parent assistant turn */
+h1::before { content: "# "; color: var(--muted); }
+.intro {
+  color: var(--muted); font-size: 12.5px; line-height: 1.55;
+  margin: 0 0 28px; padding: 0; border: none; background: transparent;
+}
+.intro code { font-size: 12px; }
+hr.section { border: 0; border-top: 1px dashed var(--rule); margin: 28px 0; }
 
-.turn p { margin: 0.4em 0; }
-.turn p:first-of-type { margin-top: 0; }
-.turn p:last-of-type { margin-bottom: 0; }
-.turn ul, .turn ol { margin: 0.4em 0; padding-left: 1.5em; }
+/* The transcript itself */
+.turn { margin: 14px 0; padding: 0; position: relative; }
+.turn .role { display: none; }  /* role labels replaced by ⏺ / > glyphs */
+
+/* User prompt — '>' marker, slightly brighter */
+.turn.user { color: var(--fg); margin-top: 22px; padding-left: 18px; position: relative; }
+.turn.user::before {
+  content: ">"; position: absolute; left: 0; top: 0;
+  color: var(--user); font-weight: 600;
+}
+.turn.user p { margin: 0 0 4px; white-space: pre-wrap; }
+
+/* Assistant text block — '⏺' marker */
+.turn.assistant { padding-left: 18px; position: relative; }
+.turn.assistant > p:first-of-type::before,
+.turn.assistant > h1:first-of-type::before,
+.turn.assistant > h2:first-of-type::before,
+.turn.assistant > h3:first-of-type::before,
+.turn.assistant > ul:first-of-type::before,
+.turn.assistant > ol:first-of-type::before {
+  content: "⏺"; position: absolute; left: 0;
+  color: var(--dot);
+}
+.turn p, .turn ul, .turn ol { margin: 0 0 8px; }
+.turn p:last-child, .turn ul:last-child, .turn ol:last-child { margin-bottom: 0; }
+.turn ul, .turn ol { padding-left: 1.4em; }
 .turn blockquote {
-  border-left: 3px solid var(--border); padding: 4px 0 4px 14px;
-  color: var(--muted); margin: 8px 0; font-style: italic;
+  border-left: 2px solid var(--rule); padding: 0 0 0 12px;
+  color: var(--muted); margin: 8px 0; font-style: normal;
 }
+.turn strong { color: #f0f0f0; font-weight: 600; }
+.turn em { color: var(--muted); }
 
-/* Thinking — quiet, inset, with subtle accent */
+/* Thinking — dim, italic, prefixed with subtle marker */
 .thinking {
-  border-left: 2px solid var(--thinking); padding: 4px 0 4px 14px;
-  margin: 12px 0 16px -22px; font-size: 13.5px; line-height: 1.55;
-  color: var(--muted);
-  position: relative;
+  color: var(--dim); font-style: italic; margin: 8px 0 12px 18px;
+  padding-left: 14px; border-left: 1px dashed var(--rule);
+  font-size: 12.5px;
 }
 .thinking::before {
-  content: "thinking"; position: absolute; top: -1px; left: 14px;
-  font-size: 9.5px; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.1em; color: var(--thinking);
-  background: var(--bg); padding: 0 6px; transform: translateY(-50%);
+  content: "✻ Thinking…"; display: block; color: var(--thinking);
+  font-style: normal; font-size: 11px; margin-bottom: 4px;
+  letter-spacing: 0.02em;
 }
-.thinking .body { padding-top: 8px; }
+.thinking .body p { margin: 0 0 4px; }
 
-/* Tool blocks — restrained, monospace-forward */
+/* Tool call block — '⏺' (amber) with Name(args) signature */
 details {
-  margin: 12px 0; border: 1px solid var(--border); border-radius: 6px;
-  background: var(--bg-sub); font-size: 13.5px;
+  margin: 6px 0 6px 18px; padding: 0; border: none; background: transparent;
+  position: relative;
+}
+details::before {
+  content: "⏺"; position: absolute; left: -18px; top: 0;
+  color: var(--tool);
 }
 summary {
-  cursor: pointer; padding: 8px 12px; user-select: none;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-  font-size: 12.5px; color: var(--fg);
-  list-style: none;
+  cursor: pointer; padding: 0; user-select: none; list-style: none;
+  font-family: inherit; font-size: 13px; color: var(--fg);
+  white-space: pre-wrap; word-break: break-word;
 }
 summary::-webkit-details-marker { display: none; }
-summary::before {
-  content: "▸"; display: inline-block; width: 14px; color: var(--muted);
-  transition: transform 0.1s ease;
-}
-details[open] > summary::before { transform: rotate(90deg); }
-details[open] > summary { border-bottom: 1px solid var(--border); }
 summary .tool-label {
-  display: inline-block; font-weight: 600; color: var(--muted);
-  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
-  margin-right: 8px; vertical-align: middle;
+  color: var(--tool); font-weight: 500;
 }
-summary .tool-target { color: var(--fg); }
-details .body { padding: 10px 12px; }
-details .body p { margin: 0.3em 0; font-size: 12.5px; }
-details.tool-error { border-color: var(--error); }
-details.tool-error > summary .tool-label { color: var(--error); }
+summary .tool-target {
+  color: var(--muted);
+}
+summary .tool-target::before { content: "("; color: var(--dim); }
+summary .tool-target::after { content: ")"; color: var(--dim); }
 
-/* Code */
+/* Tool body (open) — left gutter with ⎿ marker on first child */
+details .body {
+  margin: 4px 0 0 14px; padding: 0 0 0 14px;
+  border-left: 1px solid var(--rule);
+  color: var(--muted); font-size: 12.5px;
+  position: relative;
+}
+details .body::before {
+  content: "⎿"; position: absolute; left: -2px; top: -2px;
+  color: var(--result); background: var(--bg); padding: 0 2px;
+}
+details .body p {
+  margin: 4px 0; color: var(--muted); font-size: 11.5px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+details.tool-error::before { color: var(--error); }
+details.tool-error summary .tool-label { color: var(--error); }
+
+/* Code blocks */
 code {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-  font-size: 0.88em; background: var(--code-bg); padding: 1px 5px;
-  border-radius: 4px; color: var(--code-fg);
+  font-family: inherit; font-size: 0.95em; color: var(--fg);
+  background: transparent; padding: 0;
 }
 pre {
-  background: var(--code-bg); color: var(--code-fg);
-  border: 1px solid var(--border); border-radius: 6px;
-  padding: 10px 12px; overflow-x: auto;
+  background: var(--bg-soft); color: var(--fg);
+  border: 1px solid var(--rule); border-radius: 4px;
+  padding: 8px 10px; overflow-x: auto;
   white-space: pre-wrap; word-break: break-word;
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-  font-size: 12.5px; line-height: 1.55; margin: 8px 0;
+  font-family: inherit; font-size: 12px; line-height: 1.5;
+  margin: 6px 0;
 }
-pre code { background: transparent; padding: 0; font-size: inherit; }
-.turn pre { margin: 8px 0; }
+pre code { background: transparent; padding: 0; font-size: inherit; color: var(--fg); }
+.turn pre { background: var(--bg-soft); }
+
+/* Inline code accent inside narrative text */
+.turn p code, .turn li code, .intro code {
+  background: var(--bg-soft); padding: 1px 5px; border-radius: 3px;
+  color: var(--fg); border: 1px solid var(--rule);
+}
 
 a { color: var(--user); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-/* Print */
+/* Tables (rare, but the original docs use them) */
+table { border-collapse: collapse; margin: 8px 0; font-size: 12px; }
+th, td { border: 1px solid var(--rule); padding: 4px 8px; text-align: left; }
+th { background: var(--bg-soft); color: var(--fg); }
+
+/* Truncation hint */
+.trunc {
+  color: var(--dim); font-style: italic; font-size: 11.5px;
+  margin: 4px 0 0; padding: 0;
+}
+
+/* Print: keep it readable on paper */
 @media print {
-  body { padding: 0; max-width: none; }
+  body { background: white; color: #1f2328; padding: 0; max-width: none; }
+  h1, h1::before { color: #1f2328; }
+  .turn { color: #1f2328; }
+  .turn.user::before { color: #0969da; }
+  .turn.assistant > p:first-of-type::before,
+  .turn.assistant > h1:first-of-type::before,
+  .turn.assistant > h2:first-of-type::before,
+  .turn.assistant > h3:first-of-type::before,
+  .turn.assistant > ul:first-of-type::before,
+  .turn.assistant > ol:first-of-type::before { color: #1f2328; }
+  details::before { color: #bf6b00; }
+  summary .tool-label { color: #bf6b00; }
+  .thinking { color: #57606a; }
+  .thinking::before { color: #8250df; }
+  pre, .turn pre, .turn p code { background: #f6f8fa; border-color: #d0d7de; color: #1f2328; }
+  details .body, details .body::before { color: #57606a; }
+  details .body::before { background: white; }
   .turn { page-break-inside: avoid; }
   details { page-break-inside: avoid; }
+  /* Auto-open every tool block when printed */
+  details > .body { display: block !important; }
 }
 """
 
@@ -331,8 +401,10 @@ def render_text_as_paragraphs(text: str) -> str:
 
 
 def _summary_line(label: str, target: str) -> str:
+    """Format like Claude Code: 'Tool(args)' with parens added by CSS."""
     label_html = f"<span class='tool-label'>{html.escape(label)}</span>"
-    target_html = f"<span class='tool-target'>{html.escape(target)}</span>" if target else ""
+    target_html = (f"<span class='tool-target'>{html.escape(target)}</span>"
+                   if target else "<span class='tool-target'></span>")
     return label_html + target_html
 
 
@@ -345,28 +417,26 @@ def render_tool_use(block: dict, do_sanitize: bool,
         cmd = inp.get("command", "")
         if do_sanitize:
             cmd = sanitize(cmd)
-        summary = _summary_line("$", cmd.replace("\n", " ⏎ ")[:140])
+        summary = _summary_line("Bash", cmd.replace("\n", " ⏎ ")[:140])
         body_parts = [f"<pre><code>{html.escape(cmd)}</code></pre>"]
     elif name == "Edit":
         path = inp.get("file_path", "")
         if do_sanitize:
             path = sanitize(path)
-        summary = _summary_line("edit", path)
+        summary = _summary_line("Edit", path)
         old = inp.get("old_string", "")[:400]
         new = inp.get("new_string", "")[:400]
         if do_sanitize:
             old, new = sanitize(old), sanitize(new)
         body_parts = [
-            f"<p style='color:var(--muted);font-size:11px;'>− OLD</p>"
-            f"<pre><code>{html.escape(old)}</code></pre>",
-            f"<p style='color:var(--muted);font-size:11px;'>+ NEW</p>"
-            f"<pre><code>{html.escape(new)}</code></pre>",
+            f"<p>− old</p><pre><code>{html.escape(old)}</code></pre>",
+            f"<p>+ new</p><pre><code>{html.escape(new)}</code></pre>",
         ]
     elif name == "Write":
         path = inp.get("file_path", "")
         if do_sanitize:
             path = sanitize(path)
-        summary = _summary_line("write", path)
+        summary = _summary_line("Write", path)
         content = inp.get("content", "")[:800]
         if do_sanitize:
             content = sanitize(content)
@@ -375,45 +445,56 @@ def render_tool_use(block: dict, do_sanitize: bool,
         path = inp.get("file_path", "")
         if do_sanitize:
             path = sanitize(path)
-        summary = _summary_line("read", path)
-        body_parts = [f"<p>Read <code>{html.escape(path)}</code></p>"]
+        summary = _summary_line("Read", path)
+        body_parts = []
     elif name in ("TaskCreate", "TaskUpdate"):
         subject = inp.get("subject") or inp.get("status") or ""
         if do_sanitize:
             subject = sanitize(str(subject))
-        summary = _summary_line("task", str(subject))
-        body_parts = []  # no body — task ops are noise
+        summary = _summary_line("Task", str(subject))
+        body_parts = []
     elif name == "AskUserQuestion":
         questions = inp.get("questions", [])
         first_q = questions[0].get("question", "") if questions else ""
         if do_sanitize:
             first_q = sanitize(first_q)
-        summary = _summary_line("ask user", first_q[:140])
+        summary = _summary_line("AskUserQuestion", first_q[:140])
         body_parts = []
     else:
-        summary = _summary_line(name.lower(), "")
+        summary = _summary_line(name, "")
         raw = json.dumps(inp, indent=2)[:1000]
         if do_sanitize:
             raw = sanitize(raw)
         body_parts = [f"<pre><code>{html.escape(raw)}</code></pre>"]
 
-    # Attach the matching tool_result if we have it
+    # Attach the matching tool_result, formatted Claude-Code-style
     result = pending_results.pop(tool_id, None)
     if result is not None:
         text = result["text"]
         if do_sanitize:
             text = sanitize(text)
-        if len(text) > 3000:
-            text = text[:3000] + f"\n… ({len(text) - 3000:,} more chars omitted)"
-        if text.strip():
-            body_parts.append(
-                f"<p style='color:var(--muted);font-size:11px;margin-top:12px;'>OUTPUT</p>"
-                f"<pre><code>{html.escape(text)}</code></pre>"
-            )
+        original_lines = text.count("\n") + 1
+        max_lines = 30
+        if original_lines > max_lines:
+            kept = "\n".join(text.split("\n")[:max_lines])
+            extra = original_lines - max_lines
+            text_html = (f"<pre><code>{html.escape(kept)}</code></pre>"
+                         f"<p class='trunc'>… +{extra} lines (ctrl+o to expand)</p>")
+        elif text.strip():
+            text_html = f"<pre><code>{html.escape(text)}</code></pre>"
+        else:
+            text_html = ""
+        if text_html:
+            body_parts.append(text_html)
 
     error_cls = " tool-error" if (result and result.get("is_error")) else ""
-    body = "".join(body_parts) if body_parts else "<p style='color:var(--muted);'>(no body)</p>"
-    return (f"<details class='{error_cls.strip()}'>"
+    body = "".join(body_parts)
+    if not body:
+        # No body — close the details tag immediately. Don't render empty .body
+        # because the ⎿ glyph attached to it would look orphaned.
+        return (f"<details class='{error_cls.strip()} no-body' open>"
+                f"<summary>{summary}</summary></details>")
+    return (f"<details class='{error_cls.strip()}' open>"
             f"<summary>{summary}</summary>"
             f"<div class='body'>{body}</div></details>")
 
@@ -424,11 +505,16 @@ def render_tool_result(block: dict, do_sanitize: bool) -> str:
     text = block["text"]
     if do_sanitize:
         text = sanitize(text)
-    if len(text) > 2000:
-        text = text[:2000] + f"\n… ({len(text) - 2000:,} more chars omitted)"
+    lines = text.count("\n") + 1
+    if lines > 30:
+        kept = "\n".join(text.split("\n")[:30])
+        text_html = (f"<pre><code>{html.escape(kept)}</code></pre>"
+                     f"<p class='trunc'>… +{lines - 30} lines (ctrl+o to expand)</p>")
+    else:
+        text_html = f"<pre><code>{html.escape(text)}</code></pre>"
     cls = "tool-error" if block.get("is_error") else ""
-    return (f"<details class='{cls}'><summary>{_summary_line('result', '')}</summary>"
-            f"<div class='body'><pre><code>{html.escape(text)}</code></pre></div></details>")
+    return (f"<details class='{cls}' open><summary>{_summary_line('Result', '')}</summary>"
+            f"<div class='body'>{text_html}</div></details>")
 
 
 def render_turn(role: str, blocks: list[dict], do_sanitize: bool,
