@@ -24,9 +24,14 @@ RESULTS = Path(__file__).parent / "results"
 RESULTS.mkdir(exist_ok=True)
 
 
-def make_data(n: int, dim: int, n_classes: int, seed: int = 0):
+def make_centers(n_classes: int, dim: int) -> torch.Tensor:
+    gc = torch.Generator().manual_seed(42)
+    return torch.randn(n_classes, dim, generator=gc) * 3
+
+
+def make_data(centers: torch.Tensor, n: int, seed: int):
+    n_classes, dim = centers.shape
     g = torch.Generator().manual_seed(seed)
-    centers = torch.randn(n_classes, dim, generator=g) * 3
     y = torch.randint(0, n_classes, (n,), generator=g)
     x = centers[y] + torch.randn(n, dim, generator=g)
     return x, y
@@ -37,8 +42,9 @@ def main():
     print(f"[quickstart] device={device} torch={torch.__version__} host={platform.node()}")
 
     dim, n_classes, n_train, n_test, epochs, bs = 64, 10, 20_000, 4_000, 8, 256
-    x_tr, y_tr = make_data(n_train, dim, n_classes, seed=1)
-    x_te, y_te = make_data(n_test, dim, n_classes, seed=2)
+    centers = make_centers(n_classes, dim)
+    x_tr, y_tr = make_data(centers, n_train, seed=1)
+    x_te, y_te = make_data(centers, n_test, seed=2)
     train_loader = DataLoader(TensorDataset(x_tr, y_tr), batch_size=bs, shuffle=True)
 
     model = nn.Sequential(
