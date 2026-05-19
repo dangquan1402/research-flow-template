@@ -1,0 +1,1 @@
+{"date":"2026-05-19","experiment":"quickstart","status":"success","notes":"Pipeline canary on Vast.ai instance 37056539 (RTX 4090). final_acc=1.0, wall=1.88s, device=cuda. See examples/quickstart/sample-run/."}
