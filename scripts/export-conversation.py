@@ -168,42 +168,123 @@ def find_slice(events: list[dict], start_prompt: str, end_prompt: str | None) ->
 
 
 CSS = """
+:root {
+  --fg: #1f2328;
+  --muted: #656d76;
+  --border: #d8dee4;
+  --bg: #ffffff;
+  --bg-sub: #f6f8fa;
+  --user: #0969da;
+  --thinking: #8250df;
+  --error: #cf222e;
+  --code-bg: #f6f8fa;
+  --code-fg: #1f2328;
+}
 @page { size: A4; margin: 18mm 16mm; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  font-size: 11pt; line-height: 1.5; color: #1f2328;
-  max-width: 880px; margin: 24px auto; padding: 0 16px;
-  background: #fafbfc;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  font-size: 15px; line-height: 1.65; color: var(--fg);
+  max-width: 740px; margin: 0 auto; padding: 56px 24px 96px;
+  background: var(--bg);
+  font-feature-settings: "kern", "liga", "calt";
 }
-h1 { font-size: 20pt; border-bottom: 2px solid #d0d7de; padding-bottom: 8px; }
-.intro { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 8px; padding: 12px 16px; margin: 16px 0 24px; }
-.turn { margin: 16px 0; padding: 12px 16px; border-radius: 8px; }
-.turn.user { background: #ddf4ff; border-left: 4px solid #0969da; }
-.turn.assistant { background: #ffffff; border: 1px solid #d0d7de; }
-.turn.tool_result { background: #f6f8fa; border-left: 4px solid #57606a; font-size: 10pt; }
-.turn .role { font-weight: 600; font-size: 9.5pt; text-transform: uppercase; letter-spacing: 0.05em; color: #57606a; margin-bottom: 8px; }
-.turn.user .role { color: #0969da; }
-.thinking { background: #fff8c5; border-left: 3px solid #d4a72c; padding: 8px 12px; margin: 8px 0; font-size: 10pt; color: #57606a; font-style: italic; }
-.thinking::before { content: "💭 "; font-style: normal; }
-details { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 6px 12px; margin: 8px 0; font-size: 10pt; }
-summary { cursor: pointer; font-weight: 600; user-select: none; color: #1f2328; }
-summary code { background: rgba(175, 184, 193, 0.2); padding: 1px 5px; border-radius: 4px; font-size: 9.5pt; }
-details[open] summary { margin-bottom: 8px; }
-details .body { margin-top: 4px; }
-pre {
-  background: #0d1117; color: #c9d1d9;
-  border-radius: 6px; padding: 10px 12px; overflow-x: auto;
-  white-space: pre-wrap; word-break: break-word;
+h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4px; }
+.intro { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 0 0 48px; padding: 0; border: none; background: transparent; }
+.intro code { font-size: 13px; }
+hr.section { border: 0; border-top: 1px solid var(--border); margin: 56px 0; }
+
+/* Turns */
+.turn { margin: 28px 0; padding: 0 0 0 20px; border-left: 2px solid transparent; }
+.turn .role {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin-bottom: 6px;
+}
+.turn.user { border-left-color: var(--user); }
+.turn.user .role { color: var(--user); }
+.turn.assistant { border-left-color: var(--border); }
+.turn.tool_result { display: none; }  /* tool results shown inside their parent assistant turn */
+
+.turn p { margin: 0.4em 0; }
+.turn p:first-of-type { margin-top: 0; }
+.turn p:last-of-type { margin-bottom: 0; }
+.turn ul, .turn ol { margin: 0.4em 0; padding-left: 1.5em; }
+.turn blockquote {
+  border-left: 3px solid var(--border); padding: 4px 0 4px 14px;
+  color: var(--muted); margin: 8px 0; font-style: italic;
+}
+
+/* Thinking — quiet, inset, with subtle accent */
+.thinking {
+  border-left: 2px solid var(--thinking); padding: 4px 0 4px 14px;
+  margin: 12px 0 16px -22px; font-size: 13.5px; line-height: 1.55;
+  color: var(--muted);
+  position: relative;
+}
+.thinking::before {
+  content: "thinking"; position: absolute; top: -1px; left: 14px;
+  font-size: 9.5px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--thinking);
+  background: var(--bg); padding: 0 6px; transform: translateY(-50%);
+}
+.thinking .body { padding-top: 8px; }
+
+/* Tool blocks — restrained, monospace-forward */
+details {
+  margin: 12px 0; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg-sub); font-size: 13.5px;
+}
+summary {
+  cursor: pointer; padding: 8px 12px; user-select: none;
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-  font-size: 9.5pt; line-height: 1.4;
+  font-size: 12.5px; color: var(--fg);
+  list-style: none;
 }
-.turn.user pre { background: #0d1117; }
+summary::-webkit-details-marker { display: none; }
+summary::before {
+  content: "▸"; display: inline-block; width: 14px; color: var(--muted);
+  transition: transform 0.1s ease;
+}
+details[open] > summary::before { transform: rotate(90deg); }
+details[open] > summary { border-bottom: 1px solid var(--border); }
+summary .tool-label {
+  display: inline-block; font-weight: 600; color: var(--muted);
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  margin-right: 8px; vertical-align: middle;
+}
+summary .tool-target { color: var(--fg); }
+details .body { padding: 10px 12px; }
+details .body p { margin: 0.3em 0; font-size: 12.5px; }
+details.tool-error { border-color: var(--error); }
+details.tool-error > summary .tool-label { color: var(--error); }
+
+/* Code */
 code {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
-  font-size: 9.5pt; background: rgba(175, 184, 193, 0.2); padding: 1px 5px; border-radius: 4px;
+  font-size: 0.88em; background: var(--code-bg); padding: 1px 5px;
+  border-radius: 4px; color: var(--code-fg);
 }
-pre code { background: transparent; padding: 0; }
-.tool-error { border-left: 3px solid #cf222e; }
+pre {
+  background: var(--code-bg); color: var(--code-fg);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 10px 12px; overflow-x: auto;
+  white-space: pre-wrap; word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 12.5px; line-height: 1.55; margin: 8px 0;
+}
+pre code { background: transparent; padding: 0; font-size: inherit; }
+.turn pre { margin: 8px 0; }
+
+a { color: var(--user); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Print */
+@media print {
+  body { padding: 0; max-width: none; }
+  .turn { page-break-inside: avoid; }
+  details { page-break-inside: avoid; }
+}
 """
 
 
@@ -249,63 +330,109 @@ def render_text_as_paragraphs(text: str) -> str:
     return "\n".join(parts)
 
 
-def render_tool_use(block: dict, do_sanitize: bool) -> str:
+def _summary_line(label: str, target: str) -> str:
+    label_html = f"<span class='tool-label'>{html.escape(label)}</span>"
+    target_html = f"<span class='tool-target'>{html.escape(target)}</span>" if target else ""
+    return label_html + target_html
+
+
+def render_tool_use(block: dict, do_sanitize: bool,
+                    pending_results: dict[str, dict]) -> str:
     name = block["name"]
     inp = block.get("input", {})
-    # Pick a useful summary line
+    tool_id = block.get("id", "")
     if name == "Bash":
         cmd = inp.get("command", "")
         if do_sanitize:
             cmd = sanitize(cmd)
-        summary = f"🔧 <code>Bash</code> — <code>{html.escape(cmd[:120])}</code>"
-        body = f"<pre><code>{html.escape(cmd)}</code></pre>"
-    elif name in ("Edit", "Write"):
+        summary = _summary_line("$", cmd.replace("\n", " ⏎ ")[:140])
+        body_parts = [f"<pre><code>{html.escape(cmd)}</code></pre>"]
+    elif name == "Edit":
         path = inp.get("file_path", "")
         if do_sanitize:
             path = sanitize(path)
-        summary = f"🔧 <code>{name}</code> — <code>{html.escape(path)}</code>"
-        # Show truncated content
-        if name == "Edit":
-            old = inp.get("old_string", "")[:300]
-            new = inp.get("new_string", "")[:300]
-            if do_sanitize:
-                old, new = sanitize(old), sanitize(new)
-            body = (f"<p><b>old:</b></p><pre><code>{html.escape(old)}</code></pre>"
-                    f"<p><b>new:</b></p><pre><code>{html.escape(new)}</code></pre>")
-        else:
-            content = inp.get("content", "")[:600]
-            if do_sanitize:
-                content = sanitize(content)
-            body = f"<pre><code>{html.escape(content)}</code></pre>"
+        summary = _summary_line("edit", path)
+        old = inp.get("old_string", "")[:400]
+        new = inp.get("new_string", "")[:400]
+        if do_sanitize:
+            old, new = sanitize(old), sanitize(new)
+        body_parts = [
+            f"<p style='color:var(--muted);font-size:11px;'>− OLD</p>"
+            f"<pre><code>{html.escape(old)}</code></pre>",
+            f"<p style='color:var(--muted);font-size:11px;'>+ NEW</p>"
+            f"<pre><code>{html.escape(new)}</code></pre>",
+        ]
+    elif name == "Write":
+        path = inp.get("file_path", "")
+        if do_sanitize:
+            path = sanitize(path)
+        summary = _summary_line("write", path)
+        content = inp.get("content", "")[:800]
+        if do_sanitize:
+            content = sanitize(content)
+        body_parts = [f"<pre><code>{html.escape(content)}</code></pre>"]
     elif name == "Read":
         path = inp.get("file_path", "")
         if do_sanitize:
             path = sanitize(path)
-        summary = f"🔧 <code>Read</code> — <code>{html.escape(path)}</code>"
-        body = f"<p>Read <code>{html.escape(path)}</code></p>"
+        summary = _summary_line("read", path)
+        body_parts = [f"<p>Read <code>{html.escape(path)}</code></p>"]
+    elif name in ("TaskCreate", "TaskUpdate"):
+        subject = inp.get("subject") or inp.get("status") or ""
+        if do_sanitize:
+            subject = sanitize(str(subject))
+        summary = _summary_line("task", str(subject))
+        body_parts = []  # no body — task ops are noise
+    elif name == "AskUserQuestion":
+        questions = inp.get("questions", [])
+        first_q = questions[0].get("question", "") if questions else ""
+        if do_sanitize:
+            first_q = sanitize(first_q)
+        summary = _summary_line("ask user", first_q[:140])
+        body_parts = []
     else:
-        summary = f"🔧 <code>{html.escape(name)}</code>"
+        summary = _summary_line(name.lower(), "")
         raw = json.dumps(inp, indent=2)[:1000]
         if do_sanitize:
             raw = sanitize(raw)
-        body = f"<pre><code>{html.escape(raw)}</code></pre>"
-    return f"<details><summary>{summary}</summary><div class='body'>{body}</div></details>"
+        body_parts = [f"<pre><code>{html.escape(raw)}</code></pre>"]
+
+    # Attach the matching tool_result if we have it
+    result = pending_results.pop(tool_id, None)
+    if result is not None:
+        text = result["text"]
+        if do_sanitize:
+            text = sanitize(text)
+        if len(text) > 3000:
+            text = text[:3000] + f"\n… ({len(text) - 3000:,} more chars omitted)"
+        if text.strip():
+            body_parts.append(
+                f"<p style='color:var(--muted);font-size:11px;margin-top:12px;'>OUTPUT</p>"
+                f"<pre><code>{html.escape(text)}</code></pre>"
+            )
+
+    error_cls = " tool-error" if (result and result.get("is_error")) else ""
+    body = "".join(body_parts) if body_parts else "<p style='color:var(--muted);'>(no body)</p>"
+    return (f"<details class='{error_cls.strip()}'>"
+            f"<summary>{summary}</summary>"
+            f"<div class='body'>{body}</div></details>")
 
 
 def render_tool_result(block: dict, do_sanitize: bool) -> str:
+    # Tool results are folded into their parent tool_use via pending_results.
+    # This standalone renderer is only used for orphans.
     text = block["text"]
     if do_sanitize:
         text = sanitize(text)
-    # Truncate very long outputs
-    if len(text) > 4000:
-        text = text[:4000] + f"\n… ({len(text) - 4000:,} more chars truncated)"
+    if len(text) > 2000:
+        text = text[:2000] + f"\n… ({len(text) - 2000:,} more chars omitted)"
     cls = "tool-error" if block.get("is_error") else ""
-    label = "❌ result" if block.get("is_error") else "📤 result"
-    return (f"<details class='{cls}'><summary>{label}</summary>"
+    return (f"<details class='{cls}'><summary>{_summary_line('result', '')}</summary>"
             f"<div class='body'><pre><code>{html.escape(text)}</code></pre></div></details>")
 
 
-def render_turn(role: str, blocks: list[dict], do_sanitize: bool) -> str:
+def render_turn(role: str, blocks: list[dict], do_sanitize: bool,
+                pending_results: dict[str, dict]) -> str:
     parts = [f"<div class='role'>{role}</div>"]
     for b in blocks:
         t = b["type"]
@@ -315,22 +442,51 @@ def render_turn(role: str, blocks: list[dict], do_sanitize: bool) -> str:
                 text = sanitize(text)
             parts.append(render_text_as_paragraphs(text))
         elif t == "thinking":
-            text = b["text"]
+            text = b["text"].strip()
+            if not text:
+                continue
             if do_sanitize:
                 text = sanitize(text)
-            parts.append(f"<div class='thinking'>{html.escape(text)}</div>")
+            parts.append(f"<div class='thinking'><div class='body'>"
+                         f"{render_text_as_paragraphs(text)}</div></div>")
         elif t == "tool_use":
-            parts.append(render_tool_use(b, do_sanitize))
+            parts.append(render_tool_use(b, do_sanitize, pending_results))
         elif t == "tool_result":
             parts.append(render_tool_result(b, do_sanitize))
     return f"<div class='turn {role}'>{''.join(parts)}</div>"
 
 
-def render_html(turns: list[Turn], title: str, intro: str, do_sanitize: bool) -> str:
-    body_parts = [f"<h1>{html.escape(title)}</h1>",
-                  f"<div class='intro'>{intro}</div>"]
+def collect_results(turns: list[Turn]) -> dict[str, dict]:
+    """Build a tool_use_id → result block lookup so tool_use can inline its output."""
+    results: dict[str, dict] = {}
     for t in turns:
-        body_parts.append(render_turn(t.role, t.blocks, do_sanitize))
+        for b in t.blocks:
+            if b["type"] == "tool_result":
+                results[b["tool_use_id"]] = b
+    return results
+
+
+def render_html(turns: list[Turn], title: str, intro: str, do_sanitize: bool) -> str:
+    pending_results = collect_results(turns)
+    body_parts = [
+        f"<h1>{html.escape(title)}</h1>",
+        f"<p class='intro'>{intro}</p>",
+    ]
+    for t in turns:
+        # Skip pure-tool_result turns — their content is folded into the parent tool_use
+        if all(b["type"] == "tool_result" for b in t.blocks):
+            continue
+        # Skip turns whose only content is empty/whitespace text or empty thinking
+        rendered_blocks = []
+        for b in t.blocks:
+            if b["type"] == "text" and not b.get("text", "").strip():
+                continue
+            if b["type"] == "thinking" and not b.get("text", "").strip():
+                continue
+            rendered_blocks.append(b)
+        if not rendered_blocks:
+            continue
+        body_parts.append(render_turn(t.role, rendered_blocks, do_sanitize, pending_results))
     return f"""<!doctype html>
 <html lang="en">
 <head>
