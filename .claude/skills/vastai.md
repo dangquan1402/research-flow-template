@@ -39,6 +39,26 @@ If no keys listed, two options:
 
 **Important:** Account-level keys only apply to instances created *after* the key is added. For existing instances, use `vastai attach ssh <instance_id> <ssh_key>`.
 
+### 4. Resolve the local private key path
+
+The registered Vast.ai pubkey may not match the SSH default (`~/.ssh/id_ed25519` / `~/.ssh/id_rsa`). If it doesn't, every `ssh`/`scp`/`rsync` call needs an explicit `-i <path>` or auth will silently fail with `Permission denied (publickey)`.
+
+To resolve it once, match the registered pubkey content against local `~/.ssh/*.pub`:
+
+```bash
+# Get the registered pubkey content (strip "ssh-... ... <comment>" → middle field is the actual key material)
+remote_key=$(vastai show ssh-keys --raw 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['public_key'].split()[1])")
+
+# Find local .pub whose middle field matches
+for f in ~/.ssh/*.pub; do
+  awk -v rk="$remote_key" '$2 == rk { sub(/\.pub$/, "", FILENAME); print FILENAME; exit }' "$f"
+done
+```
+
+The result is the **private key path** to embed in `experiments/.vastai-instance.json` as `ssh_key`. If multiple Vast.ai keys are registered, ask the user which one to use.
+
+If no local key matches: the user has the registered pubkey somewhere else (different machine, password manager). Ask them to point at the private key path, or generate a new one with `vastai create ssh-key` and rerun.
+
 ---
 
 ## Subcommand: `rent`
@@ -98,6 +118,7 @@ Write to `experiments/.vastai-instance.json`:
   "image": "pytorch/pytorch:latest",
   "ssh_host": "ssh4.vast.ai",
   "ssh_port": 12345,
+  "ssh_key": "~/.ssh/id_ed25519",
   "jupyter_url": "https://...",
   "dph": 1.85,
   "started_at": "2026-05-20T10:30:00Z",
@@ -105,10 +126,18 @@ Write to `experiments/.vastai-instance.json`:
 }
 ```
 
+The `ssh_key` field is the local private-key path (resolved in setup step 4). All subsequent ssh/scp/rsync calls in this skill **must** include `-i <ssh_key>` (or omit if the registered key matches the SSH default). Read it back with:
+
+```bash
+SSH_KEY=$(jq -r '.ssh_key // ""' experiments/.vastai-instance.json | sed "s|^~|$HOME|")
+SSH_ARGS="${SSH_KEY:+-i $SSH_KEY}"
+# then: ssh $SSH_ARGS -p $port root@$host '...'
+```
+
 ### Step 6: Print connection info
 
 Show:
-- SSH command: `ssh -p <port> root@<host>`
+- SSH command: `ssh -i <ssh_key> -p <port> root@<host>` (include `-i` only if `ssh_key` differs from SSH defaults)
 - Jupyter URL (from `vastai show instance <id>`)
 - Hourly cost
 - A warning: instance is running and billing has started — destroy with `/vastai terminate` when done
@@ -143,23 +172,23 @@ If `experiments/.vastai-instance.json` exists, highlight that one. Show:
 
 Run a one-shot remote command on the active instance (agent-driven, non-interactive). For interactive use by the human, just print the SSH command.
 
-1. Read `experiments/.vastai-instance.json`
+1. Read `experiments/.vastai-instance.json` — pull `ssh_host`, `ssh_port`, and `ssh_key` (private-key path, may be null/missing → use SSH default keys)
 2. **For agent-driven calls** — execute the command and return output:
    ```bash
-   ssh -p <ssh_port> root@<ssh_host> '<command>'
+   ssh -i <ssh_key> -p <ssh_port> root@<ssh_host> '<command>'
    ```
+   Omit `-i <ssh_key>` only if the state file has no `ssh_key` field (meaning the registered Vast.ai key matches the SSH default).
    Examples:
-   - `ssh ... 'tail -n 50 /workspace/logs/run.log'`
-   - `ssh ... 'nvidia-smi'`
-   - `ssh ... 'cat /workspace/configs/baseline.yaml'`
-3. **For the human** — print the interactive SSH command:
+   - `ssh -i ~/.ssh/quandang13 -p 16538 root@ssh9.vast.ai 'tail -n 50 /workspace/logs/run.log'`
+   - `ssh -i ~/.ssh/quandang13 -p 16538 root@ssh9.vast.ai 'nvidia-smi'`
+3. **For the human** — print the interactive SSH command including `-i` if needed:
    ```bash
-   ssh -p <ssh_port> root@<ssh_host>
+   ssh -i <ssh_key> -p <ssh_port> root@<ssh_host>
    ```
 4. First connection: silence host-key prompts with `-o StrictHostKeyChecking=accept-new`
 5. For Jupyter via SSH tunnel (only if Jupyter URL uses localhost):
    ```bash
-   ssh -p <ssh_port> root@<ssh_host> -L 8888:localhost:8888 -N -f
+   ssh -i <ssh_key> -p <ssh_port> root@<ssh_host> -L 8888:localhost:8888 -N -f
    ```
    (`-N` no remote command, `-f` background)
 
@@ -182,27 +211,30 @@ Move data between local repo and the rented instance.
 
 ### Local → Remote (push experiment code)
 ```bash
-scp -P <port> -r experiments/ root@<host>:/workspace/
+scp -i <ssh_key> -P <port> -r experiments/ root@<host>:/workspace/
 ```
 
 ### Remote → Local (pull results)
 ```bash
-scp -P <port> -r root@<host>:/workspace/results/ experiments/results/
+scp -i <ssh_key> -P <port> -r root@<host>:/workspace/results/ experiments/results/
 ```
 
 Or use rsync for incremental syncs:
 ```bash
-rsync -avz -e "ssh -p <port>" experiments/ root@<host>:/workspace/experiments/
-rsync -avz -e "ssh -p <port>" root@<host>:/workspace/results/ experiments/results/
+rsync -avz -e "ssh -i <ssh_key> -p <port>" experiments/ root@<host>:/workspace/experiments/
+rsync -avz -e "ssh -i <ssh_key> -p <port>" root@<host>:/workspace/results/ experiments/results/
 ```
 
 **Note the uppercase `-P` for scp** (lowercase `-p` for ssh) — Vast.ai gotcha.
+Drop `-i <ssh_key>` when the state file's `ssh_key` field is empty/missing.
 
 ---
 
 ## Workflow: Agent-Driven Training Run
 
 **No tmux, no interactive sessions.** Claude drives the whole loop with non-interactive SSH and SCP — push scripts, launch detached training, poll logs, pull results, terminate. Every command returns to the agent.
+
+> **SSH key reminder:** all `ssh`/`scp`/`rsync` examples below assume the registered Vast.ai key is one of SSH's defaults (`~/.ssh/id_ed25519`, `~/.ssh/id_rsa`). If `experiments/.vastai-instance.json` has an `ssh_key` field set during `rent`, **add `-i <ssh_key>` to every command** (or `-e "ssh -i <ssh_key> -p <port>"` for rsync). The examples omit it for readability — substitute when running.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
