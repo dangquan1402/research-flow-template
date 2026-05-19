@@ -1,0 +1,376 @@
+---
+name: vastai
+description: Rent and manage Vast.ai GPU instances for experiments. Handles setup (API key, SSH key), rent/status/ssh/jupyter/sync/terminate. Tracks state per-project.
+user_invocable: true
+---
+
+# /vastai — GPU Rental on Vast.ai
+
+This skill manages the full lifecycle of GPU instances rented from Vast.ai for research experiments. It tracks one active instance per project in `experiments/.vastai-instance.json` (gitignored).
+
+## Setup Check (always run first)
+
+Before any subcommand, verify the user's environment. Run these checks in order — stop and resolve the first failure before continuing.
+
+### 1. `vastai` CLI installed?
+```bash
+which vastai
+```
+If missing: `uv add vastai` (or `pip install vastai`). Ask user to install before continuing.
+
+### 2. API key configured?
+```bash
+test -f ~/.vast_api_key && echo "set" || echo "missing"
+```
+If missing:
+1. Tell the user to visit https://cloud.vast.ai/account/ and copy their API key
+2. Have them run: `vastai set api-key <KEY>` — this writes `~/.vast_api_key`
+3. Do NOT save the key in the repo
+
+### 3. SSH key registered with Vast.ai account?
+```bash
+vastai show ssh-keys
+```
+If no keys listed, two options:
+- **A — Generate new key:** `vastai create ssh-key` (creates `~/.ssh/id_ed25519` and uploads it)
+- **B — Use existing key:** copy `~/.ssh/<your-key>.pub` content and either:
+  - Paste at https://cloud.vast.ai/manage-keys/ (UI)
+  - Or: `vastai create ssh-key --ssh-key "$(cat ~/.ssh/your-key.pub)"`
+
+**Important:** Account-level keys only apply to instances created *after* the key is added. For existing instances, use `vastai attach ssh <instance_id> <ssh_key>`.
+
+---
+
+## Subcommand: `rent`
+
+Rent a GPU instance for an experiment.
+
+### Step 1: Ask the user
+
+1. **GPU type** — H100, A100, RTX 4090, etc.
+2. **Disk size** — default 30 GB
+3. **Docker image** — default `pytorch/pytorch:latest`. Common alternatives:
+   - `pytorch/pytorch:latest` — PyTorch with CUDA
+   - `nvcr.io/nvidia/pytorch:24.10-py3` — NVIDIA's optimized PyTorch
+   - `tensorflow/tensorflow:latest-gpu-jupyter` — TF + built-in Jupyter
+4. **Need Jupyter?** If yes, pick an image with `-jupyter` suffix or install in onstart
+5. **Expected runtime** — for cost estimation
+
+### Step 2: Search offers
+
+```bash
+vastai search offers 'reliability > 0.95 num_gpus=1 gpu_name=H100 inet_down>500' \
+  --order 'dph_total' --limit 5
+```
+
+Show the top 5 to the user. They pick an offer ID.
+
+### Step 3: Create instance
+
+```bash
+vastai create instance <OFFER_ID> \
+  --image pytorch/pytorch:latest \
+  --disk 30 \
+  --ssh \
+  --jupyter \
+  --jupyter-lab \
+  --direct \
+  --onstart-cmd "touch /root/.no_auto_tmux && mkdir -p /workspace/logs"
+```
+
+Key flags:
+- `--ssh` — enable SSH access (uses account-level keys)
+- `--jupyter --jupyter-lab` — start Jupyter Lab on the instance
+- `--direct` — direct connection (faster than proxied)
+- `--onstart-cmd` — **always include `touch /root/.no_auto_tmux`** so the agent's SSH calls don't get hijacked into a tmux session. Add other bootstrap (e.g., `pip install -r requirements.txt`) after the `&&`.
+
+### Step 4: Wait for instance ready
+
+Poll with `vastai show instances` until the new instance shows `status: running` (usually 30s–2min). Display progress.
+
+### Step 5: Save state
+
+Write to `experiments/.vastai-instance.json`:
+```json
+{
+  "id": 12345678,
+  "gpu_name": "H100",
+  "image": "pytorch/pytorch:latest",
+  "ssh_host": "ssh4.vast.ai",
+  "ssh_port": 12345,
+  "jupyter_url": "https://...",
+  "dph": 1.85,
+  "started_at": "2026-05-20T10:30:00Z",
+  "purpose": "experiment slug or open-question slug"
+}
+```
+
+### Step 6: Print connection info
+
+Show:
+- SSH command: `ssh -p <port> root@<host>`
+- Jupyter URL (from `vastai show instance <id>`)
+- Hourly cost
+- A warning: instance is running and billing has started — destroy with `/vastai terminate` when done
+
+### Step 7: Log to memory
+
+Append to `memory/log.md`:
+```
+## [YYYY-MM-DD] vastai | rented <gpu> for <purpose>
+- Instance: <id> @ $<dph>/hr
+- Purpose: <slug>
+```
+
+---
+
+## Subcommand: `status`
+
+Show all running instances + the active one for this project.
+
+```bash
+vastai show instances
+```
+
+If `experiments/.vastai-instance.json` exists, highlight that one. Show:
+- Instance ID, GPU, image, hourly cost
+- Uptime and accumulated cost
+- SSH host/port and Jupyter URL
+
+---
+
+## Subcommand: `ssh`
+
+Run a one-shot remote command on the active instance (agent-driven, non-interactive). For interactive use by the human, just print the SSH command.
+
+1. Read `experiments/.vastai-instance.json`
+2. **For agent-driven calls** — execute the command and return output:
+   ```bash
+   ssh -p <ssh_port> root@<ssh_host> '<command>'
+   ```
+   Examples:
+   - `ssh ... 'tail -n 50 /workspace/logs/run.log'`
+   - `ssh ... 'nvidia-smi'`
+   - `ssh ... 'cat /workspace/configs/baseline.yaml'`
+3. **For the human** — print the interactive SSH command:
+   ```bash
+   ssh -p <ssh_port> root@<ssh_host>
+   ```
+4. First connection: silence host-key prompts with `-o StrictHostKeyChecking=accept-new`
+5. For Jupyter via SSH tunnel (only if Jupyter URL uses localhost):
+   ```bash
+   ssh -p <ssh_port> root@<ssh_host> -L 8888:localhost:8888 -N -f
+   ```
+   (`-N` no remote command, `-f` background)
+
+---
+
+## Subcommand: `jupyter`
+
+Print the Jupyter URL from state. Open in browser if the user wants.
+
+```bash
+# Get URL from saved state OR query fresh
+vastai show instance <id> | grep jupyter_url
+```
+
+---
+
+## Subcommand: `sync`
+
+Move data between local repo and the rented instance.
+
+### Local → Remote (push experiment code)
+```bash
+scp -P <port> -r experiments/ root@<host>:/workspace/
+```
+
+### Remote → Local (pull results)
+```bash
+scp -P <port> -r root@<host>:/workspace/results/ experiments/results/
+```
+
+Or use rsync for incremental syncs:
+```bash
+rsync -avz -e "ssh -p <port>" experiments/ root@<host>:/workspace/experiments/
+rsync -avz -e "ssh -p <port>" root@<host>:/workspace/results/ experiments/results/
+```
+
+**Note the uppercase `-P` for scp** (lowercase `-p` for ssh) — Vast.ai gotcha.
+
+---
+
+## Workflow: Agent-Driven Training Run
+
+**No tmux, no interactive sessions.** Claude drives the whole loop with non-interactive SSH and SCP — push scripts, launch detached training, poll logs, pull results, terminate. Every command returns to the agent.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  LOCAL (agent)                      REMOTE (Vast.ai)            │
+│  ─────────────                      ──────────────              │
+│  1. /vastai rent              →     instance running            │
+│     (onstart disables tmux)                                     │
+│  2. scp -P …  (push code)     →     /workspace/                 │
+│  3. ssh "nohup python …  &"   →     training detached, PID saved│
+│  4. ssh "tail -n 100 log"   ⇄     poll periodically             │
+│  5. scp -P …  (pull results)  ←     /workspace/results/         │
+│  6. /vastai terminate                                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Step 1: Rent with tmux disabled
+
+When calling `vastai create instance` in the `rent` subcommand, **always include `touch ~/.no_auto_tmux` in `--onstart-cmd`** so SSH connections drop straight to a shell. Example:
+
+```bash
+vastai create instance <OFFER_ID> \
+  --image pytorch/pytorch:latest \
+  --disk 30 --ssh --jupyter --jupyter-lab --direct \
+  --onstart-cmd "touch /root/.no_auto_tmux && cd /workspace && echo 'ready'"
+```
+
+### Step 2: Push code (scp)
+
+```bash
+# Single file
+scp -P <port> experiments/train.py root@<host>:/workspace/
+
+# Whole directory, incremental
+rsync -avz -e "ssh -p <port>" experiments/ root@<host>:/workspace/experiments/
+```
+
+Use the `sync push` subcommand to wrap this — reads host/port from `experiments/.vastai-instance.json`.
+
+### Step 3: Launch training as a detached job
+
+```bash
+ssh -p <port> root@<host> << 'EOF'
+cd /workspace
+mkdir -p logs
+nohup python -m experiments.train > logs/run.log 2>&1 &
+echo $! > logs/run.pid
+echo "Started PID: $(cat logs/run.pid)"
+EOF
+```
+
+The job runs detached. The SSH command returns immediately with the PID. Save the PID and log path into `experiments/.vastai-instance.json` so subsequent commands know where to look:
+
+```json
+{
+  "id": 12345678,
+  "ssh_host": "ssh4.vast.ai",
+  "ssh_port": 12345,
+  "active_job": {
+    "pid": 8421,
+    "log_path": "/workspace/logs/run.log",
+    "started_at": "2026-05-20T11:00:00Z",
+    "command": "python -m experiments.train"
+  }
+}
+```
+
+### Step 4: Poll status (agent-friendly)
+
+Each poll is a single non-interactive SSH that returns and exits. Agent decides cadence (every 60s, 5min, etc.).
+
+```bash
+# Is the process still running?
+ssh -p <port> root@<host> "kill -0 <PID> 2>/dev/null && echo RUNNING || echo DONE"
+
+# Latest log
+ssh -p <port> root@<host> "tail -n 50 /workspace/logs/run.log"
+
+# GPU usage snapshot
+ssh -p <port> root@<host> "nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader"
+
+# All three in one call
+ssh -p <port> root@<host> "kill -0 <PID> 2>/dev/null && echo RUNNING || echo DONE; tail -n 30 /workspace/logs/run.log; nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader"
+```
+
+### Step 5: Pull results
+
+```bash
+rsync -avz -e "ssh -p <port>" root@<host>:/workspace/results/ experiments/results/
+rsync -avz -e "ssh -p <port>" root@<host>:/workspace/logs/    experiments/results/logs/
+```
+
+Append a line to `experiments/results/run-log.jsonl` documenting the run.
+
+### Step 6: Terminate
+
+```bash
+/vastai terminate    # offers final sync, then destroys
+```
+
+### When the agent needs to read docs / browse the box
+
+Same pattern — one-shot SSH commands:
+
+```bash
+# Read a file on the remote
+ssh -p <port> root@<host> 'cat /workspace/configs/baseline.yaml'
+
+# List a directory
+ssh -p <port> root@<host> 'ls -la /workspace/results/'
+
+# Check disk
+ssh -p <port> root@<host> 'df -h /workspace'
+
+# Check what's installed
+ssh -p <port> root@<host> 'pip list | grep torch'
+```
+
+The agent treats SSH like a remote shell call — each invocation is stateless and returns output immediately.
+
+---
+
+## Subcommand: `terminate`
+
+Destroy the active instance and clean up state.
+
+### Step 1: Confirm with user
+Show current instance details + accumulated cost. Ask explicitly: "Destroy instance <id>? (yes/no)"
+
+### Step 2: Pull final results
+If the instance has unsaved data in `/workspace/results/`, offer to sync down first:
+```bash
+rsync -avz -e "ssh -p <port>" root@<host>:/workspace/results/ experiments/results/
+```
+
+### Step 3: Destroy
+```bash
+vastai destroy instance <id>
+```
+
+### Step 4: Archive state
+Move `experiments/.vastai-instance.json` to `experiments/.vastai-history.jsonl` (append one line) and delete the active file. This keeps a record of past rentals for cost tracking.
+
+### Step 5: Log to memory
+```
+## [YYYY-MM-DD] vastai | terminated <id> after <hours>h ($<total>)
+```
+
+---
+
+## Conventions
+
+- **Never commit state files** — `.vastai-instance.json` and `.vastai-history.jsonl` are gitignored
+- **One active instance per project** — if `experiments/.vastai-instance.json` exists, ask before renting another
+- **Always link to purpose** — every rental should reference an open-question or experiment slug
+- **Cost discipline** — show running cost on `status` and `terminate`. Warn if a rental has been running >24h without activity.
+- **Prefer Docker over VM** — VMs require SSH keys pre-creation; Docker lets you attach keys after the fact
+- **Use `--direct` connections** when available — proxied connections are slower
+
+## Common Errors
+
+| Error | Cause | Fix |
+|---|---|---|
+| `Permission denied (publickey)` | SSH key not on instance | `vastai attach ssh <id> "$(cat ~/.ssh/id_ed25519.pub)"` |
+| `Connection refused` | Instance not ready or wrong port | `vastai show instance <id>` to recheck |
+| `No such file: ~/.vast_api_key` | API key not set | `vastai set api-key <KEY>` |
+| `Host key verification failed` | Reused port from old rental | `ssh-keygen -R "[host]:port"` then retry |
+
+## See Also
+
+- [`/experiment`](experiment.md) — the lifecycle that consumes a rented GPU
+- Vast.ai docs: https://docs.vast.ai
