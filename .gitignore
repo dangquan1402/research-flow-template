@@ -31,3 +31,10 @@ sources/_pdf-images/
 
 # Lint / build caches
 .ruff_cache/
+
+# Jekyll
+_site/
+.jekyll-cache/
+.jekyll-metadata
+.bundle/
+Gemfile.lock

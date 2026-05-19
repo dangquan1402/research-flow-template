@@ -1,0 +1,27 @@
+title: Research Flow
+description: Agentic research system with persistent working memory and Claude Code skills.
+theme: just-the-docs
+
+color_scheme: dark
+
+# Navigation
+nav_sort: order
+
+# Footer
+footer_content: "Research Flow Template — MIT License"
+
+# Exclude non-doc files from the site
+exclude:
+  - CLAUDE.md
+  - pyproject.toml
+  - uv.lock
+  - .pre-commit-config.yaml
+  - Gemfile
+  - Gemfile.lock
+  - experiments/
+  - memory/
+  - sources/
+  - goals/
+  - outputs/
+  - .claude/
+  - "*.sh"

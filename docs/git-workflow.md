@@ -1,4 +1,20 @@
+---
+layout: default
+title: Git Workflow
+nav_order: 5
+---
+
 # Git Workflow for Research Flow
+{: .no_toc }
+
+<details open markdown="block">
+  <summary>Contents</summary>
+  {: .text-delta }
+- TOC
+{:toc}
+</details>
+
+---
 
 ## Branch Strategy
 

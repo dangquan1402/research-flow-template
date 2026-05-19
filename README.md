@@ -57,6 +57,14 @@ The three-layer memory model:
 - [`docs/git-workflow.md`](docs/git-workflow.md) — branch types and naming
 - [`docs/memory-page-template.md`](docs/memory-page-template.md) — frontmatter for memory pages
 
+## Browse docs locally
+
+```bash
+gem install bundler && bundle install
+bundle exec jekyll serve
+# open http://localhost:4000
+```
+
 ## License
 
 MIT
