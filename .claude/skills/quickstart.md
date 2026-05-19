@@ -50,12 +50,12 @@ Do **not** attempt to run these steps yourself — they require user input and m
 
 ## Workflow
 
+> Read `ssh_host`, `ssh_port`, and `ssh_key` from `experiments/.vastai-instance.json` before each step. All `ssh`/`scp`/`rsync` calls below show placeholders; substitute `-i <ssh_key>` if the field is set (and drop it if empty/missing).
+
 ### Step 3 — SSH smoke test
 
-Read host/port from `experiments/.vastai-instance.json`. Then:
-
 ```bash
-ssh -p <port> -o StrictHostKeyChecking=accept-new root@<host> 'nvidia-smi --query-gpu=name,driver_version --format=csv,noheader'
+ssh -i <ssh_key> -p <port> -o StrictHostKeyChecking=accept-new root@<host> 'nvidia-smi --query-gpu=name,driver_version --format=csv,noheader'
 ```
 
 ✅ **Verify:** output names a GPU. If `Permission denied (publickey)`, run:
@@ -69,8 +69,8 @@ vastai attach ssh <id> "$(cat ~/.ssh/id_ed25519.pub)"
 ### Step 4 — Push the training script
 
 ```bash
-scp -P <port> examples/quickstart/train.py root@<host>:/workspace/train.py
-ssh -p <port> root@<host> 'ls -la /workspace/train.py'
+scp -i <ssh_key> -P <port> examples/quickstart/train.py root@<host>:/workspace/train.py
+ssh -i <ssh_key> -p <port> root@<host> 'ls -la /workspace/train.py'
 ```
 
 ✅ **Verify:** `ls` shows non-zero size.
@@ -78,14 +78,10 @@ ssh -p <port> root@<host> 'ls -la /workspace/train.py'
 ### Step 5 — Launch detached
 
 ```bash
-ssh -p <port> root@<host> << 'EOF'
-cd /workspace
-mkdir -p logs results
-nohup python train.py > logs/run.log 2>&1 &
-echo $! > logs/run.pid
-echo "Started PID: $(cat logs/run.pid)"
-EOF
+ssh -i <ssh_key> -p <port> root@<host> 'set -e; cd /workspace; mkdir -p logs results; (nohup python train.py > logs/run.log 2>&1 &); sleep 1; pgrep -f "python train.py" | head -1 > logs/run.pid; echo "Started PID: $(cat logs/run.pid)"'
 ```
+
+> **Bash precedence gotcha:** `cmd1 && cmd2 & cmd3` parses as `(cmd1 && cmd2) & cmd3` — so `mkdir && nohup python &` puts mkdir into background and the next line races against it. Use a subshell `(nohup ... &)` and a brief `sleep` + `pgrep` to capture the actual training PID, not the shell wrapper.
 
 Save the returned PID into `experiments/.vastai-instance.json` under `active_job`:
 
@@ -106,13 +102,13 @@ Save the returned PID into `experiments/.vastai-instance.json` under `active_job
 Poll every 15 seconds, max 10 minutes. Each poll is one SSH call:
 
 ```bash
-ssh -p <port> root@<host> "kill -0 <pid> 2>/dev/null && echo RUNNING || echo DONE; tail -n 5 /workspace/logs/run.log"
+ssh -i <ssh_key> -p <port> root@<host> "kill -0 <pid> 2>/dev/null && echo RUNNING || echo DONE; tail -n 5 /workspace/logs/run.log"
 ```
 
 Show the user the last log lines on each poll so they can see progress. When the first token is `DONE`, fetch the full log:
 
 ```bash
-ssh -p <port> root@<host> 'cat /workspace/logs/run.log'
+ssh -i <ssh_key> -p <port> root@<host> 'cat /workspace/logs/run.log'
 ```
 
 ✅ **Verify:** the final line matches the pattern `[quickstart] done in <N>s  final_acc=<acc>`. If `acc < 0.95` or the final line is missing, **stop** — training ran but the result is off-spec. Show the user the tail and ask whether to continue.
@@ -122,8 +118,8 @@ If the 10-minute timeout hits without `DONE`, stop and ask the user whether to k
 ### Step 7 — Rsync results back
 
 ```bash
-rsync -avz -e "ssh -p <port>" root@<host>:/workspace/results/ examples/quickstart/results/
-rsync -avz -e "ssh -p <port>" root@<host>:/workspace/logs/    examples/quickstart/logs/
+rsync -avz -e "ssh -i <ssh_key> -p <port>" root@<host>:/workspace/results/ examples/quickstart/results/
+rsync -avz -e "ssh -i <ssh_key> -p <port>" root@<host>:/workspace/logs/    examples/quickstart/logs/
 ```
 
 ✅ **Verify:**

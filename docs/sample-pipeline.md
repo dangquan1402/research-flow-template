@@ -27,7 +27,7 @@ Every step has a **✅ Verify** checkpoint. If your output matches, that step is
 The template's skills (`/vastai`, `/experiment`, `/synthesize`, `/report`) compose into a long pipeline. Without a known-good sample, you can't tell whether step N is broken because of your setup, the template, or the GPU. This walkthrough is the **canary**: if it runs clean end-to-end, your installation is wired correctly.
 
 What you'll produce:
-- A trained model with `final_acc >= 0.95` on synthetic data
+- A trained model with `final_acc == 1.0` on synthetic data
 - `experiments/results/run-log.jsonl` entry
 - `memory/findings/quickstart-pipeline-works.md`
 - `outputs/quickstart-report.html`
@@ -109,27 +109,31 @@ Ask Claude:
 
 > Run `nvidia-smi` on the rented instance.
 
-Claude reads `.vastai-instance.json` and runs:
+Claude reads `.vastai-instance.json` (including the `ssh_key` field, set during `rent`) and runs:
 
 ```bash
-ssh -p <port> -o StrictHostKeyChecking=accept-new root@<host> 'nvidia-smi'
+ssh -i <ssh_key> -p <port> -o StrictHostKeyChecking=accept-new root@<host> 'nvidia-smi'
 ```
 
-✅ **Verify:** output shows the GPU name (`RTX 4090` / `H100`), driver version, and CUDA version. If you get `Permission denied (publickey)`, your account-level SSH key wasn't applied — run `vastai attach ssh <id> "$(cat ~/.ssh/id_ed25519.pub)"` and retry.
+In every command in this walkthrough, `<ssh_key>` is the path stored in `experiments/.vastai-instance.json`'s `ssh_key` field. If that field is empty/missing, your registered Vast.ai key matches the SSH default — drop `-i <ssh_key>` everywhere below.
+
+✅ **Verify:** output shows the GPU name (`RTX 4090` / `H100`), driver version, and CUDA version. If you get `Permission denied (publickey)`, either:
+- The registered Vast.ai key was added *after* this instance was created → `vastai attach ssh <id> "$(cat <ssh_key>.pub)"` and retry
+- Or `ssh_key` resolution missed the right local key → check `vastai show ssh-keys` against `~/.ssh/*.pub` content
 
 ---
 
 ## Step 4 — Push the training script (scp)
 
 ```bash
-scp -P <port> examples/quickstart/train.py root@<host>:/workspace/train.py
+scp -i <ssh_key> -P <port> examples/quickstart/train.py root@<host>:/workspace/train.py
 ```
 
 (Note **uppercase `-P`** for scp — Vast.ai gotcha.)
 
 ✅ **Verify:**
 ```bash
-ssh -p <port> root@<host> 'ls -la /workspace/'
+ssh -i <ssh_key> -p <port> root@<host> 'ls -la /workspace/'
 ```
 Should show `train.py` with non-zero size.
 
@@ -138,7 +142,7 @@ Should show `train.py` with non-zero size.
 ## Step 5 — Launch training detached
 
 ```bash
-ssh -p <port> root@<host> << 'EOF'
+ssh -i <ssh_key> -p <port> root@<host> << 'EOF'
 cd /workspace
 mkdir -p logs results
 nohup python train.py > logs/run.log 2>&1 &
@@ -151,7 +155,7 @@ The SSH call returns immediately with the PID. Training is now detached on the b
 
 ✅ **Verify:**
 ```bash
-ssh -p <port> root@<host> 'kill -0 $(cat /workspace/logs/run.pid) && echo RUNNING'
+ssh -i <ssh_key> -p <port> root@<host> 'kill -0 $(cat /workspace/logs/run.pid) && echo RUNNING'
 ```
 Prints `RUNNING`.
 
@@ -166,20 +170,20 @@ Ask Claude:
 Or manually:
 
 ```bash
-ssh -p <port> root@<host> 'tail -n 20 /workspace/logs/run.log'
+ssh -i <ssh_key> -p <port> root@<host> 'tail -n 20 /workspace/logs/run.log'
 ```
 
 ✅ **Verify:** within ~30s you should see lines like:
 
 ```
-[quickstart] device=cuda torch=2.4.0 host=C.12345678
-[quickstart] epoch=1/8 loss=1.4231 acc=0.7320
+[quickstart] device=cuda torch=2.2.1 host=9aaa1ec65522
+[quickstart] epoch=1/8 loss=0.2416 acc=1.0000
 ...
-[quickstart] epoch=8/8 loss=0.0456 acc=0.9910
-[quickstart] done in 12.4s  final_acc=0.9910  → results/metrics.json
+[quickstart] epoch=8/8 loss=0.0001 acc=1.0000
+[quickstart] done in 1.9s  final_acc=1.0000  → results/metrics.json
 ```
 
-Compare against [`examples/quickstart/expected/run.log.snippet`](../examples/quickstart/expected/run.log.snippet). The exact numbers will vary but the shape should match.
+Compare against the real captured run at [`examples/quickstart/sample-run/`](../examples/quickstart/sample-run/) — your `final_acc` should match `1.0` exactly (the synthetic data is fully separable). Wall time scales with GPU: ~2s on RTX 4090/H100, ~30-90s on CPU. If your accuracy is below 1.0, the script or pipeline is broken.
 
 When you see `done in Xs`, the process has exited.
 
@@ -188,17 +192,17 @@ When you see `done in Xs`, the process has exited.
 ## Step 7 — Pull results back (rsync)
 
 ```bash
-rsync -avz -e "ssh -p <port>" root@<host>:/workspace/results/ examples/quickstart/results/
-rsync -avz -e "ssh -p <port>" root@<host>:/workspace/logs/    examples/quickstart/logs/
+rsync -avz -e "ssh -i <ssh_key> -p <port>" root@<host>:/workspace/results/ examples/quickstart/results/
+rsync -avz -e "ssh -i <ssh_key> -p <port>" root@<host>:/workspace/logs/    examples/quickstart/logs/
 ```
 
 ✅ **Verify:**
 ```bash
 cat examples/quickstart/results/metrics.json
 ```
-Should show `final_acc >= 0.95`, `device: "cuda"`, plus host/torch version. Compare against `examples/quickstart/expected/metrics.json`.
+Should show `final_acc == 1.0`, `device: "cuda"`, plus host/torch version. Compare against `examples/quickstart/expected/metrics.json`.
 
-If `final_acc < 0.95`, training got cut off — check the log for an early exit.
+If `final_acc < 1.0`, the script or pipeline is broken — check the log for an early exit or a data-split bug.
 
 ---
 
@@ -227,7 +231,7 @@ Or just ask Claude:
 
 When asked, point Claude at `examples/quickstart/results/metrics.json` and tell it:
 
-> The hypothesis was "the pipeline works end-to-end." The acceptance criterion was `final_acc >= 0.95`. Write a positive finding.
+> The hypothesis was "the pipeline works end-to-end." The acceptance criterion was `final_acc == 1.0`. Write a positive finding.
 
 Claude writes `memory/findings/quickstart-pipeline-works.md` with citation back to the metrics file, updates `memory/index.md`, and appends to `memory/log.md`.
 
