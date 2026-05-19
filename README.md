@@ -53,6 +53,8 @@ The three-layer memory model:
 ## Read next
 
 - [`CLAUDE.md`](CLAUDE.md) — start here
+- [`docs/getting-started.md`](docs/getting-started.md) — prerequisites and first session
+- [`docs/sample-pipeline.md`](docs/sample-pipeline.md) — **15-min end-to-end canary on Vast.ai** (rent → train → report) with verify checkpoints at every step
 - [`docs/claude-code-guide.md`](docs/claude-code-guide.md) — full explanation of every Claude Code primitive
 - [`docs/git-workflow.md`](docs/git-workflow.md) — branch types and naming
 - [`docs/memory-page-template.md`](docs/memory-page-template.md) — frontmatter for memory pages

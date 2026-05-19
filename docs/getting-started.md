@@ -148,6 +148,16 @@ Each agent works in its own git worktree — no conflicts. Merge the best findin
 
 ---
 
+## Verify Your Setup with the Quickstart Canary
+
+Before starting real research, run the end-to-end canary to confirm every layer of the pipeline is wired correctly on your machine. It takes ~15 minutes and costs ~$0.20 in Vast.ai compute.
+
+➡ **[docs/sample-pipeline.md](sample-pipeline.md)** — 11 steps from `/research` to `/vastai terminate`, each with a ✅ Verify checkpoint so failures localize to the broken layer.
+
+If the canary passes, your installation is good. If not, fix the failing step before starting your own research — debugging the pipeline mid-experiment is much harder.
+
+---
+
 ## Useful Commands
 
 | Command | Purpose |
