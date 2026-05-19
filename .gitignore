@@ -42,3 +42,6 @@ _site/
 .jekyll-metadata
 .bundle/
 Gemfile.lock
+
+# Built docs (regenerate via scripts/build-docs-pdf.py + headless Chrome)
+docs-pdf/
