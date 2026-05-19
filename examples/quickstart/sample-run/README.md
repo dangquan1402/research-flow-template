@@ -18,10 +18,22 @@ These artifacts come from an **actual run** of the quickstart canary against a r
 
 ## Files
 
+### Training artifacts (captured from the real run)
 - [`results/metrics.json`](results/metrics.json) — final training metrics
 - [`results/loss_curve.csv`](results/loss_curve.csv) — per-epoch loss + accuracy
 - [`logs/run.log`](logs/run.log) — full stdout from `nohup python train.py`
 - [`logs/run.pid`](logs/run.pid) — PID file (informational)
+
+### Research-workflow artifacts (what `/research`, `/experiment`, `/synthesize` produce)
+
+These are **sample versions** of files that, in a real run, would live at the canonical paths under `goals/`, `memory/`, and `outputs/` at the repo root. They're collected here so you can see what the research layer's output should look like without polluting your own `memory/` tree.
+
+- [`goals/quickstart-pipeline.md`](goals/quickstart-pipeline.md) — research goal definition (output of `/research`)
+- [`memory/open-questions/can-pipeline-work-e2e.md`](memory/open-questions/can-pipeline-work-e2e.md) — the question this canary answered
+- [`memory/findings/quickstart-pipeline-works.md`](memory/findings/quickstart-pipeline-works.md) — positive finding citing the real `metrics.json` (output of `/experiment`)
+- [`memory/log.md`](memory/log.md) — append-only operation log entries for the full session
+- [`memory/index.md`](memory/index.md) — index entries pointing at the finding and resolved question
+- [`outputs/quickstart-synthesis.md`](outputs/quickstart-synthesis.md) — synthesis report consolidating the finding into a runbook (output of `/synthesize`)
 
 ## How to use
 
