@@ -19,6 +19,10 @@ mlflow.db
 experiments/checkpoints/
 experiments/results/*.partial.json
 
+# Vast.ai state (per-machine, contains instance IDs and connection info)
+experiments/.vastai-instance.json
+experiments/.vastai-history.jsonl
+
 # Rendered PDF pages from /read-pdf skill (regenerate from sources/*.pdf)
 sources/_pdf-images/
 

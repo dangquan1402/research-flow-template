@@ -121,6 +121,9 @@ memory/
 **Ingest helpers:**
 - **`/read-pdf`** — Render a PDF (paper, report, scan) to one PNG per page via PyMuPDF, then read the images directly. Preserves figures, tables, equations, and scanned text that text extraction would lose. Output goes to `sources/_pdf-images/<slug>/`.
 
+**Infrastructure helpers:**
+- **`/vastai`** — Rent and manage GPU instances on Vast.ai. Subcommands: `rent`, `status`, `ssh`, `jupyter`, `sync`, `terminate`. State tracked in `experiments/.vastai-instance.json` (gitignored). Use when an experiment needs GPU compute the local machine can't provide.
+
 Steps 7-10 form the **validation & presentation layer** — they can be run in any order after synthesis, and each strengthens the others (e.g., verification failures inform critique, examples clarify evidence).
 
 ## Experiment Workflow

@@ -250,6 +250,7 @@ The YAML frontmatter tells Claude Code the skill name and whether users can invo
 | `/lint` | Health-check memory: orphans, contradictions, staleness, missing cross-refs |
 | `/read-pdf` | Render a PDF to images page-by-page and read them (preserves figures/tables) |
 | `/import` | Bulk-import an existing project — copies artifacts to `sources/`, extracts findings + entities, scaffolds memory in one pass |
+| `/vastai` | Rent and manage GPU instances on Vast.ai (rent, ssh, jupyter, sync, terminate). State tracked per-project in `experiments/.vastai-instance.json` |
 
 **Skills vs CLAUDE.md:**
 
