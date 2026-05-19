@@ -123,6 +123,7 @@ memory/
 
 **Infrastructure helpers:**
 - **`/vastai`** — Rent and manage GPU instances on Vast.ai. Subcommands: `rent`, `status`, `ssh`, `jupyter`, `sync`, `terminate`. State tracked in `experiments/.vastai-instance.json` (gitignored). Use when an experiment needs GPU compute the local machine can't provide.
+- **`/quickstart`** — End-to-end pipeline canary on Vast.ai using the bundled `examples/quickstart/` demo. Automates scp/launch/poll/sync; defers `/research`, `/vastai rent`, `/experiment`, `/synthesize`, `/vastai terminate` to the user. Use after fresh setup or when debugging a broken pipeline. See [`docs/sample-pipeline.md`](docs/sample-pipeline.md).
 
 Steps 7-10 form the **validation & presentation layer** — they can be run in any order after synthesis, and each strengthens the others (e.g., verification failures inform critique, examples clarify evidence).
 
