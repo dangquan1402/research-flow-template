@@ -1,0 +1,22 @@
+{
+  "final_val_loss": 1.6234,
+  "best_val_loss": 1.6201,
+  "final_train_loss": 1.5388,
+  "wall_seconds": 184.7,
+  "device": "cuda",
+  "torch_version": "2.2.1",
+  "host": "9aaa1ec65522",
+  "params": 832896,
+  "hparams": {
+    "block": 128,
+    "n_layer": 4,
+    "n_head": 4,
+    "n_embd": 128,
+    "batch": 64,
+    "steps": 2000,
+    "lr": 0.0003,
+    "warmup": 100,
+    "seed": 1337
+  },
+  "_note": "Reference numbers from RTX 4090. Your run should land within ~0.05 on best_val_loss and ~2x on wall_seconds depending on GPU. Replace this file with your own captured run after you've validated the pipeline."
+}

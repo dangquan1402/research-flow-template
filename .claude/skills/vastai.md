@@ -61,6 +61,36 @@ If no local key matches: the user has the registered pubkey somewhere else (diff
 
 ---
 
+## Cost Guardrails
+
+Vast.ai has **no native account-level $/hr or budget cap**. Spending is bounded by three layers, applied together. Every `rent` call enforces #2 and #3; #1 is a one-time account setup the user does on the web.
+
+| Layer | Where | What it caps |
+|---|---|---|
+| **1. Account balance** | https://cloud.vast.ai/billing/ — **disable autobilling**, keep balance low (e.g., $10) | Total spend, account-wide. The only true ceiling. |
+| **2. Contract duration** | `duration<N` filter on `vastai search offers` | Wall-clock per instance — Vast.ai locks the contract end date at rent time and auto-stops the box then. |
+| **3. Hourly rate** | `dph<X` filter on `vastai search offers` | $/hr per instance. |
+
+**Worst-case math** with all three: `dph_max × duration_max = $ at risk per rental`. E.g., `$0.40/hr × 4hr = $1.60` even if the user forgets to terminate.
+
+### First-time setup nudge
+
+On the first `rent` of a session (or if `experiments/.vastai-history.jsonl` doesn't exist yet), remind the user:
+
+> Before we rent: open https://cloud.vast.ai/billing/ and confirm **autobilling is OFF**. With autobilling on, your card auto-tops-up the balance — there's no spending ceiling. With it off, your loaded balance is the hard cap.
+
+Don't block on this — it's a nudge, not a check. The user owns their billing settings.
+
+### Required rent-time inputs
+
+Always ask the user for these two before searching offers (defaults shown):
+- **Max $/hr (`dph_max`)** — default `0.40` (4090 territory). Higher only if user explicitly wants H100/A100.
+- **Max contract hours (`duration_max`)** — default `4`. Picks an offer whose contract end is within this window so a forgotten box auto-terminates.
+
+Surface the resulting worst-case `dph_max × duration_max` in dollars before running the search, so the user sees the ceiling they're agreeing to.
+
+---
+
 ## Subcommand: `rent`
 
 Rent a GPU instance for an experiment.
@@ -75,15 +105,37 @@ Rent a GPU instance for an experiment.
    - `tensorflow/tensorflow:latest-gpu-jupyter` — TF + built-in Jupyter
 4. **Need Jupyter?** If yes, pick an image with `-jupyter` suffix or install in onstart
 5. **Expected runtime** — for cost estimation
+6. **Cost guardrails** (see [Cost Guardrails](#cost-guardrails) section above):
+   - **Max $/hr (`dph_max`)** — default `0.40`
+   - **Max contract hours (`duration_max`)** — default `4` (auto-terminates box at the contract end)
+
+Before searching, show the user the worst-case ceiling:
+
+> Ceiling: `dph_max × duration_max` = $`X.XX` if the box runs the full contract.
+
+If this is the first rental of the session, also surface the autobilling nudge from the [Cost Guardrails](#cost-guardrails) section.
 
 ### Step 2: Search offers
 
+Always include both guardrail filters in the search query. `duration` is in hours.
+
 ```bash
-vastai search offers 'reliability > 0.95 num_gpus=1 gpu_name=H100 inet_down>500' \
+vastai search offers \
+  "reliability>0.95 num_gpus=1 gpu_name=<GPU> inet_down>500 dph<<DPH_MAX> duration<<DURATION_MAX>" \
   --order 'dph_total' --limit 5
 ```
 
-Show the top 5 to the user. They pick an offer ID.
+Concrete example (4090, $0.40/hr cap, 4-hour contract cap):
+
+```bash
+vastai search offers \
+  'reliability>0.95 num_gpus=1 gpu_name=RTX_4090 inet_down>500 dph<0.40 duration<4' \
+  --order 'dph_total' --limit 5
+```
+
+Show the top 5 to the user with `dph`, `duration` (contract hours remaining), and `gpu_name` columns visible. They pick an offer ID.
+
+If the search returns 0 offers, **don't quietly widen the filters** — report back to the user that no offer matches their guardrails and ask whether to raise `dph_max` or `duration_max`. Silent relaxation defeats the whole point.
 
 ### Step 3: Create instance
 
@@ -122,7 +174,13 @@ Write to `experiments/.vastai-instance.json`:
   "jupyter_url": "https://...",
   "dph": 1.85,
   "started_at": "2026-05-20T10:30:00Z",
-  "purpose": "experiment slug or open-question slug"
+  "purpose": "experiment slug or open-question slug",
+  "guardrails": {
+    "dph_max": 0.40,
+    "duration_max_hours": 4,
+    "worst_case_usd": 1.60,
+    "contract_end_at": "2026-05-20T14:30:00Z"
+  }
 }
 ```
 
@@ -165,6 +223,7 @@ If `experiments/.vastai-instance.json` exists, highlight that one. Show:
 - Instance ID, GPU, image, hourly cost
 - Uptime and accumulated cost
 - SSH host/port and Jupyter URL
+- **Guardrails:** `dph_max`, `duration_max_hours`, time until `contract_end_at`, and `accumulated_cost / worst_case_usd` as a progress fraction. If accumulated cost is >80% of `worst_case_usd`, surface a warning.
 
 ---
 
@@ -382,6 +441,13 @@ Move `experiments/.vastai-instance.json` to `experiments/.vastai-history.jsonl` 
 ## [YYYY-MM-DD] vastai | terminated <id> after <hours>h ($<total>)
 ```
 
+### Step 6: Guardrail post-mortem
+If `guardrails.worst_case_usd` was set on the instance, compare:
+- `total_cost` vs `worst_case_usd` — should be ≤ ceiling. If exceeded (e.g., contract was extended), flag it loudly: "Cost overran guardrail: $X spent vs $Y ceiling — review billing."
+- `uptime_hours` vs `duration_max_hours` — same check.
+
+This isn't a hard stop (the box is already destroyed), but it's the feedback signal the user needs to recalibrate guardrails for next time.
+
 ---
 
 ## Conventions
@@ -390,6 +456,7 @@ Move `experiments/.vastai-instance.json` to `experiments/.vastai-history.jsonl` 
 - **One active instance per project** — if `experiments/.vastai-instance.json` exists, ask before renting another
 - **Always link to purpose** — every rental should reference an open-question or experiment slug
 - **Cost discipline** — show running cost on `status` and `terminate`. Warn if a rental has been running >24h without activity.
+- **Cost guardrails are mandatory** — never run `vastai search offers` without `dph<` and `duration<` filters derived from user-stated guardrails. If the search yields nothing, ask the user to raise the cap rather than silently dropping the filter.
 - **Prefer Docker over VM** — VMs require SSH keys pre-creation; Docker lets you attach keys after the fact
 - **Use `--direct` connections** when available — proxied connections are slower
 
@@ -401,6 +468,7 @@ Move `experiments/.vastai-instance.json` to `experiments/.vastai-history.jsonl` 
 | `Connection refused` | Instance not ready or wrong port | `vastai show instance <id>` to recheck |
 | `No such file: ~/.vast_api_key` | API key not set | `vastai set api-key <KEY>` |
 | `Host key verification failed` | Reused port from old rental | `ssh-keygen -R "[host]:port"` then retry |
+| `No matching offers` | `dph<` / `duration<` guardrails too tight, or no hosts have a short-enough contract for the chosen GPU | Ask user to raise `dph_max` or `duration_max` — do NOT silently widen the search |
 
 ## See Also
 

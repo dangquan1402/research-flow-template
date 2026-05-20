@@ -1,0 +1,16 @@
+[baseline] device=cuda torch=2.2.1 host=9aaa1ec65522
+[baseline] downloading tiny-shakespeare → /workspace/data/input.txt
+[baseline] vocab=65 chars=1115394
+[baseline] params=832,896
+[baseline] step=100/2000 train_loss=2.5189 val_loss=2.5044 lr=0.00030
+[baseline] step=200/2000 train_loss=2.4108 val_loss=2.4061 lr=0.00030
+[baseline] step=400/2000 train_loss=2.2174 val_loss=2.2310 lr=0.00029
+[baseline] step=600/2000 train_loss=2.0103 val_loss=2.0521 lr=0.00027
+[baseline] step=800/2000 train_loss=1.8754 val_loss=1.9097 lr=0.00024
+[baseline] step=1000/2000 train_loss=1.7621 val_loss=1.8014 lr=0.00021
+[baseline] step=1200/2000 train_loss=1.6824 val_loss=1.7268 lr=0.00017
+[baseline] step=1400/2000 train_loss=1.6210 val_loss=1.6749 lr=0.00013
+[baseline] step=1600/2000 train_loss=1.5728 val_loss=1.6422 lr=0.00009
+[baseline] step=1800/2000 train_loss=1.5481 val_loss=1.6256 lr=0.00005
+[baseline] step=2000/2000 train_loss=1.5388 val_loss=1.6234 lr=0.00000
+[baseline] done in 184.7s  best_val=1.6201  final_val=1.6234  → results/metrics.json
