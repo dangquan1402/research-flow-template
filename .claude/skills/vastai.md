@@ -92,6 +92,8 @@ Don't block on this — it's a nudge, not a check. The user owns their billing s
 
 Ask the user for these before searching offers (defaults shown):
 - **Max $/hr (`dph_max`)** — default `0.40` (4090 territory). Higher only if user explicitly wants H100/A100. Enforced via `dph<` in the search.
+
+  **Gotcha:** the `dph<` filter matches against `dph_base` (the GPU rate), but actual billing is `dph_total` = `dph_base + storage + bandwidth`. A `dph<0.40` filter can surface an offer that costs $0.40+/hr after fees. **Always set the filter ~10% below the user's stated cap** (e.g., user says `$0.40` → use `dph<0.36`), and verify `dph_total` of the picked offer is still under the user's number before creating.
 - **Expected runtime in minutes (`runtime_minutes`)** — default `30`. Used for two things:
   - Projecting expected cost (`dph_picked × runtime_minutes / 60`) before launch.
   - Setting a `--max-seconds` value (`runtime_minutes × 60 × 2`, i.e., 2× safety margin) for the training script. The script must accept `--max-seconds`; if it doesn't, surface that as a guardrail gap.
@@ -481,6 +483,7 @@ This isn't a hard stop (the box is already destroyed), but it's the feedback sig
 | `No such file: ~/.vast_api_key` | API key not set | `vastai set api-key <KEY>` |
 | `Host key verification failed` | Reused port from old rental | `ssh-keygen -R "[host]:port"` then retry |
 | `No matching offers` | `dph<` cap too tight for the chosen GPU | Ask user to raise `dph_max` — do NOT silently widen the search |
+| Instance stuck in `actual_status: loading` with `intended_status: stopped` and `status_msg: "Error: Internal error"` | Host accepted the create request but couldn't schedule (resource conflict, container pull failure, host transient issue) | `vastai destroy instance <id>` and try a different offer. Storage charges only — typically ~$0.01. Don't keep retrying the same host. |
 
 ## See Also
 
