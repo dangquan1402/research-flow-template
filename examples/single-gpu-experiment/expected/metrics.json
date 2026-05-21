@@ -1,0 +1,22 @@
+{
+  "final_val_loss": 2.3341,
+  "best_val_loss": 2.3322,
+  "final_train_loss": 2.3,
+  "wall_seconds": 28.4,
+  "device": "cuda",
+  "torch_version": "2.2.1",
+  "host": "3a6c0ff49d10",
+  "params": 816000,
+  "hparams": {
+    "block": 128,
+    "n_layer": 4,
+    "n_head": 4,
+    "n_embd": 128,
+    "batch": 64,
+    "steps": 2000,
+    "lr": 0.0003,
+    "warmup": 100,
+    "seed": 1337
+  },
+  "_note": "Captured on RTX 3090 @ $0.27/hr (Japan host, machine 48881) on 2026-05-21 via the vastai skill smoke test. Note: 2000 steps is enough to demonstrate the pipeline but not enough for the model to truly converge on Tiny Shakespeare — typical nanoGPT shakespeare_char configs need ~5000 iters to reach val_loss ~1.5. Treat this as a 'pipeline-works' baseline, not a 'tight transformer baseline.' If you want the latter, bump STEPS in train.py and re-run."
+}

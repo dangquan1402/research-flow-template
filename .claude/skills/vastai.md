@@ -61,6 +61,47 @@ If no local key matches: the user has the registered pubkey somewhere else (diff
 
 ---
 
+## Cost Guardrails
+
+Vast.ai has **no native account-level $/hr or budget cap, and no per-instance scheduled auto-stop** (`vastai create instance` has no `--end-date` flag). Real cost bounding is therefore a layered defense — server-side where possible, script-side as backup, discipline as the last line.
+
+| Layer | Where it's enforced | What it actually caps |
+|---|---|---|
+| **1. Account balance + autobilling OFF** | https://cloud.vast.ai/billing/ — disable autobilling, keep balance low (e.g., $10) | Total spend across the whole account. **This is the only true server-side ceiling.** |
+| **2. `dph<X` filter** | `vastai search offers` query | $/hr per instance, enforced at search time. |
+| **3. `--max-seconds` in training script** | The script itself (e.g., `train.py --max-seconds 600`) | Wall-clock per *run*. Belt-and-suspenders even if the box stays up. |
+| **4. Disciplined `/vastai terminate`** | Manual / agent action right after the run finishes | Final close-out. |
+
+### What does NOT work as a guardrail
+
+Documenting these explicitly so the skill doesn't drift back into wishful thinking:
+
+- **`duration<N` search filter** — Vast.ai's `duration` field is "**max rental days available** from the host," not a wall-clock cap on *your* rental. Bigger value = more time available. `duration<0.25` ("offers where host only rents for ≤6 hours") technically narrows the pool, but such offers rarely exist and the host can extend mid-rental. Treat as **advisory only**, not as a wall-clock ceiling.
+- **`vastai create instance --end-date`** — does not exist as of this writing. There is no native scheduled auto-stop at creation.
+- **Local `at` / `cron` calling `vastai destroy`** — brittle (laptop sleep, network drop). Possible but don't lean on it.
+
+### First-time setup nudge
+
+On the first `rent` of a session (or if `experiments/.vastai-history.jsonl` doesn't exist yet), remind the user:
+
+> Before we rent: open https://cloud.vast.ai/billing/ and confirm **autobilling is OFF**. With autobilling on, your card auto-tops-up the balance — there's no spending ceiling. With it off, your loaded balance is the hard cap.
+
+Don't block on this — it's a nudge, not a check. The user owns their billing settings.
+
+### Required rent-time inputs
+
+Ask the user for these before searching offers (defaults shown):
+- **Max $/hr (`dph_max`)** — default `0.40` (4090 territory). Higher only if user explicitly wants H100/A100. Enforced via `dph<` in the search.
+
+  **Gotcha:** the `dph<` filter matches against `dph_base` (the GPU rate), but actual billing is `dph_total` = `dph_base + storage + bandwidth`. A `dph<0.40` filter can surface an offer that costs $0.40+/hr after fees. **Always set the filter ~10% below the user's stated cap** (e.g., user says `$0.40` → use `dph<0.36`), and verify `dph_total` of the picked offer is still under the user's number before creating.
+- **Expected runtime in minutes (`runtime_minutes`)** — default `30`. Used for two things:
+  - Projecting expected cost (`dph_picked × runtime_minutes / 60`) before launch.
+  - Setting a `--max-seconds` value (`runtime_minutes × 60 × 2`, i.e., 2× safety margin) for the training script. The script must accept `--max-seconds`; if it doesn't, surface that as a guardrail gap.
+
+Worst-case bound the user is agreeing to: `dph_max × (max_seconds / 3600)` in dollars, **assuming the user actually terminates promptly when the script exits**. If they don't, the only cap is the account balance (Layer 1).
+
+---
+
 ## Subcommand: `rent`
 
 Rent a GPU instance for an experiment.
@@ -75,15 +116,39 @@ Rent a GPU instance for an experiment.
    - `tensorflow/tensorflow:latest-gpu-jupyter` — TF + built-in Jupyter
 4. **Need Jupyter?** If yes, pick an image with `-jupyter` suffix or install in onstart
 5. **Expected runtime** — for cost estimation
+6. **Cost guardrails** (see [Cost Guardrails](#cost-guardrails) section above):
+   - **Max $/hr (`dph_max`)** — default `0.40`. Enforced via `dph<` in the offer search.
+   - **Expected runtime (`runtime_minutes`)** — default `30`. Used for projected-cost math and to set `--max-seconds` on the training script (`runtime_minutes × 60 × 2` for 2× safety margin).
+
+Before searching, show the user the projected cost and the wall-clock cap:
+
+> Projected: `dph_max × runtime_minutes / 60` = $`X.XX` if you train the full expected window at the cap rate.
+> Script wall-clock cap: `--max-seconds <runtime_minutes × 120>` (2× margin).
+> Hard ceiling above this is your account balance — confirm autobilling is OFF.
+
+If this is the first rental of the session, also surface the autobilling nudge from the [Cost Guardrails](#cost-guardrails) section.
 
 ### Step 2: Search offers
 
+Include `dph<` as the cost guardrail. `duration` is *not* a wall-clock cap (see [Cost Guardrails § What does NOT work](#cost-guardrails)) — only include it if you want to filter for shorter-contract hosts as a soft signal, with a value in days.
+
 ```bash
-vastai search offers 'reliability > 0.95 num_gpus=1 gpu_name=H100 inet_down>500' \
+vastai search offers \
+  "reliability>0.95 num_gpus=1 gpu_name=<GPU> inet_down>500 dph<<DPH_MAX>" \
   --order 'dph_total' --limit 5
 ```
 
-Show the top 5 to the user. They pick an offer ID.
+Concrete example (4090, $0.40/hr cap):
+
+```bash
+vastai search offers \
+  'reliability>0.95 num_gpus=1 gpu_name=RTX_4090 inet_down>500 dph<0.40' \
+  --order 'dph_total' --limit 5
+```
+
+Show the top 5 to the user with `dph`, `gpu_name`, country (`geolocation`), and reliability visible. They pick an offer ID.
+
+If the search returns 0 offers, **don't quietly widen the filter** — report back and ask whether to raise `dph_max`. Silent relaxation defeats the whole point.
 
 ### Step 3: Create instance
 
@@ -122,7 +187,14 @@ Write to `experiments/.vastai-instance.json`:
   "jupyter_url": "https://...",
   "dph": 1.85,
   "started_at": "2026-05-20T10:30:00Z",
-  "purpose": "experiment slug or open-question slug"
+  "purpose": "experiment slug or open-question slug",
+  "guardrails": {
+    "dph_max": 0.40,
+    "runtime_minutes": 30,
+    "max_seconds_arg": 3600,
+    "projected_usd": 0.20,
+    "note": "Wall-clock cap is enforced by the training script's --max-seconds flag, not Vast.ai. Account balance + autobilling-off is the true ceiling."
+  }
 }
 ```
 
@@ -165,6 +237,7 @@ If `experiments/.vastai-instance.json` exists, highlight that one. Show:
 - Instance ID, GPU, image, hourly cost
 - Uptime and accumulated cost
 - SSH host/port and Jupyter URL
+- **Guardrails:** `dph_max`, projected vs accumulated cost, and `(actual_dph / dph_max)` ratio. If accumulated cost exceeds `projected_usd × 3`, surface a "well over expected runtime — check if you forgot to terminate" warning.
 
 ---
 
@@ -382,6 +455,13 @@ Move `experiments/.vastai-instance.json` to `experiments/.vastai-history.jsonl` 
 ## [YYYY-MM-DD] vastai | terminated <id> after <hours>h ($<total>)
 ```
 
+### Step 6: Guardrail post-mortem
+If `guardrails.projected_usd` was set on the instance, compare:
+- `total_cost` vs `projected_usd` — if `total_cost > 3 × projected_usd`, flag loudly: "Cost ran ~Nx over projection — the box stayed up longer than the expected runtime. Lower `runtime_minutes` next time, or terminate sooner."
+- `actual_dph` vs `dph_max` — should always be ≤ (it's enforced by the search). If somehow exceeded (host changed pricing mid-rental? bug?), surface it.
+
+This isn't a hard stop (the box is already destroyed), but it's the feedback signal the user needs to recalibrate guardrails for next time.
+
 ---
 
 ## Conventions
@@ -390,6 +470,7 @@ Move `experiments/.vastai-instance.json` to `experiments/.vastai-history.jsonl` 
 - **One active instance per project** — if `experiments/.vastai-instance.json` exists, ask before renting another
 - **Always link to purpose** — every rental should reference an open-question or experiment slug
 - **Cost discipline** — show running cost on `status` and `terminate`. Warn if a rental has been running >24h without activity.
+- **Cost guardrails are mandatory** — never run `vastai search offers` without a `dph<` filter derived from `dph_max`. If the search yields nothing, ask the user to raise the cap rather than silently dropping the filter. The wall-clock cap belongs in the training script (`--max-seconds`), not the search.
 - **Prefer Docker over VM** — VMs require SSH keys pre-creation; Docker lets you attach keys after the fact
 - **Use `--direct` connections** when available — proxied connections are slower
 
@@ -401,6 +482,8 @@ Move `experiments/.vastai-instance.json` to `experiments/.vastai-history.jsonl` 
 | `Connection refused` | Instance not ready or wrong port | `vastai show instance <id>` to recheck |
 | `No such file: ~/.vast_api_key` | API key not set | `vastai set api-key <KEY>` |
 | `Host key verification failed` | Reused port from old rental | `ssh-keygen -R "[host]:port"` then retry |
+| `No matching offers` | `dph<` cap too tight for the chosen GPU | Ask user to raise `dph_max` — do NOT silently widen the search |
+| Instance stuck in `actual_status: loading` with `intended_status: stopped` and `status_msg: "Error: Internal error"` | Host accepted the create request but couldn't schedule (resource conflict, container pull failure, host transient issue) | `vastai destroy instance <id>` and try a different offer. Storage charges only — typically ~$0.01. Don't keep retrying the same host. |
 
 ## See Also
 
