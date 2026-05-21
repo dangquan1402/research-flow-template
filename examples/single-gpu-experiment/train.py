@@ -14,6 +14,7 @@ Outputs (./results/):
 
 from __future__ import annotations
 
+import argparse
 import json
 import math
 import platform
@@ -151,9 +152,20 @@ def lr_at(step: int) -> float:
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--max-seconds",
+        type=float,
+        default=None,
+        help="Wall-clock cap. Exits cleanly after this many seconds even if STEPS not reached.",
+    )
+    args = parser.parse_args()
+
     torch.manual_seed(SEED)
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"[baseline] device={device} torch={torch.__version__} host={platform.node()}")
+    if args.max_seconds is not None:
+        print(f"[baseline] wall-clock cap: --max-seconds={args.max_seconds}")
 
     train_data, val_data, meta = load_data()
     print(f"[baseline] vocab={meta['vocab_size']} chars={meta['n_chars']}")
@@ -190,6 +202,13 @@ def main():
             )
             with curve.open("a") as f:
                 f.write(f"{step + 1},{last_train_loss:.6f},{val:.6f}\n")
+
+        if args.max_seconds is not None and (time.time() - t0) >= args.max_seconds:
+            print(
+                f"[baseline] --max-seconds={args.max_seconds} reached at step={step + 1}; "
+                "exiting cleanly"
+            )
+            break
 
     wall = time.time() - t0
     metrics = {

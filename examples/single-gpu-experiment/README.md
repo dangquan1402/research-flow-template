@@ -90,28 +90,29 @@ Now back in Claude Code:
 > /vastai rent
 >
 > 4090, 20GB disk, pytorch/pytorch:latest image, no jupyter.
-> Guardrails: dph_max=$0.40/hr, duration_max=4hr.
+> Guardrails: dph_max=$0.40/hr, runtime_minutes=10 (training is ~5 min, give 2× margin → --max-seconds=1200).
 
 **Claude:**
-- Shows the worst-case ceiling: `$0.40 × 4hr = $1.60` and asks you to confirm
-- Runs `vastai search offers 'reliability>0.95 num_gpus=1 gpu_name=RTX_4090 dph<0.40 duration<4' --order dph_total --limit 5`
+- Shows projected cost: `$0.40 × 10/60 = $0.07` if it runs the full expected window at the cap rate
+- Reminds you that the *hard* ceiling is your account balance (autobilling OFF) — Vast.ai has no per-instance auto-stop, so wall-clock discipline lives in the training script
+- Runs `vastai search offers 'reliability>0.95 num_gpus=1 gpu_name=RTX_4090 dph<0.40' --order dph_total --limit 5`
 - Picks the cheapest verified host and creates the instance with
   `--onstart-cmd "touch /root/.no_auto_tmux && mkdir -p /workspace"`
 - Writes `experiments/.vastai-instance.json` with `id`, `ssh_host`,
   `ssh_port`, `ssh_key`, `dph`, and a `guardrails` block (`dph_max`,
-  `duration_max_hours`, `contract_end_at`, `worst_case_usd`)
+  `runtime_minutes`, `max_seconds_arg`, `projected_usd`)
 
-If the search returns 0 offers, **Claude won't silently widen the filters** —
-it'll ask whether you want to raise `dph_max` or `duration_max`. That's by
-design.
+If the search returns 0 offers, **Claude won't silently widen the filter** —
+it'll ask whether you want to raise `dph_max`. That's by design.
 
 ✅ **Verify:**
 ```bash
 cat experiments/.vastai-instance.json | jq '{id, dph, ssh_host, guardrails}'
 vastai show instances     # should say "running"
 ```
-The `guardrails.contract_end_at` field is your wall-clock cap — Vast.ai
-auto-stops the box at that timestamp even if you forget to terminate.
+The `guardrails.max_seconds_arg` value (`1200` in this example) is what gets
+passed to `train.py --max-seconds 1200` in step 6 — that's where the
+wall-clock cap actually lives. Vast.ai itself does not enforce one.
 
 ---
 
@@ -158,13 +159,17 @@ scp -i <ssh_key> -P <port> examples/single-gpu-experiment/train.py \
 ssh -i <ssh_key> -p <port> root@<host> << 'EOF'
 cd /workspace
 mkdir -p logs results
-nohup python train.py > logs/run.log 2>&1 &
+nohup python train.py --max-seconds 1200 > logs/run.log 2>&1 &
 echo $! > logs/run.pid
 echo "Started PID: $(cat logs/run.pid)"
 EOF
 ```
 
 SSH returns immediately. Training runs detached — your laptop can sleep.
+The `--max-seconds 1200` flag is the script-side wall-clock cap: even if the
+loss explodes or the loop hangs, the process exits cleanly after 20 minutes.
+That's the only wall-clock cap that actually fires — Vast.ai has no
+equivalent server-side feature.
 
 ✅ **Verify:**
 ```bash
@@ -276,18 +281,18 @@ gh issue list --label finding
 - Runs `vastai destroy instance <id>`
 - Moves `.vastai-instance.json` → appends a line to `.vastai-history.jsonl`
   with total uptime + cost
-- **Guardrail post-mortem:** compares actual spend vs `worst_case_usd` and
-  uptime vs `duration_max_hours`. Flags loudly if either was exceeded
-  (shouldn't happen with `duration<` filter, but signals if a contract was
-  extended).
+- **Guardrail post-mortem:** compares actual spend vs `projected_usd`. If
+  `total_cost > 3 × projected_usd`, flags loudly: "Box stayed up much longer
+  than the expected runtime — lower `runtime_minutes` next time or terminate
+  sooner."
 
 ✅ **Verify:**
 ```bash
 test ! -f experiments/.vastai-instance.json && echo "cleaned up"
 tail -n 1 experiments/.vastai-history.jsonl
 ```
-Cost should be **$0.10–$0.20** for this experiment — well under the $1.60
-ceiling set in step 3.
+Cost should be **$0.05–$0.15** for this experiment — well in line with the
+$0.07 projection from step 3.
 
 ---
 
@@ -329,12 +334,13 @@ These are the human↔Claude interaction patterns worth internalizing:
    ground truth; the finding is interpretation. Both are checked in.
 6. **Terminate immediately.** Cost discipline starts the moment the run
    finishes. Don't "leave it up for later."
-7. **Set guardrails before searching offers, not after.** `dph_max` and
-   `duration_max` go into the `vastai search offers` filter directly. Combined
-   with autobilling OFF on the account, this gives you three independent caps
-   — and the worst-case math (`dph_max × duration_max`) is visible *before*
-   you spend a cent. See [`.claude/skills/vastai.md` § Cost Guardrails](../../.claude/skills/vastai.md#cost-guardrails)
-   for the full model.
+7. **Set guardrails before searching offers, not after.** `dph_max` goes into
+   the `vastai search offers` filter. The wall-clock cap lives in the
+   training script (`--max-seconds`), not in Vast.ai — there's no server-side
+   auto-stop. Combined with autobilling OFF (the only true server-side
+   ceiling) you get a layered defense. See [`.claude/skills/vastai.md` § Cost Guardrails](../../.claude/skills/vastai.md#cost-guardrails)
+   for the full model, including a list of things that look like guardrails
+   but aren't.
 
 ---
 
@@ -350,5 +356,5 @@ Experiment-specific issues:
 | `val_loss < train_loss` consistently | Eval batches too small (noisy) | Increase `EVAL_BATCHES` in `train.py` |
 | Wall time > 10 min on a 4090 | Wrong GPU rented, or CPU fallback | Confirm `nvidia-smi` shows the 4090 *and* `metrics.json.device == "cuda"` |
 | Download hang on first run | Outbound HTTPS blocked on the box | Pre-stage `input.txt` and `scp` it alongside `train.py` |
-| `vastai search offers` returns 0 results | `dph_max` or `duration_max` too tight for the chosen GPU | Ask Claude to raise one cap (e.g., `dph<0.60` or `duration<8`). Don't drop the filters entirely — that's what they're there for. |
-| Final cost > worst-case ceiling | Contract was extended by the host mid-run | Surfaced by the `terminate` post-mortem. Lower `duration_max` next time, or pick a host whose offer end is closer in. |
+| `vastai search offers` returns 0 results | `dph_max` too tight for the chosen GPU | Ask Claude to raise the cap (e.g., `dph<0.60`). Don't drop the filter entirely — that's what it's there for. |
+| Final cost > 3× projected | Box stayed up much longer than expected runtime | Surfaced by the `terminate` post-mortem. Lower `runtime_minutes` next time, terminate sooner, and double-check `--max-seconds` is actually being passed to the training script. |
