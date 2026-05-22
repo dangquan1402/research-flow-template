@@ -366,7 +366,7 @@ The loop from here is the standard research-flow loop:
 3. `/evidence` + `/verify` + `/examples` + `/critique` for the validation layer
 4. `/distill` to extract decisions, `/lint` to keep memory clean
 
-See [Sample Pipeline](sample-pipeline.md) for the GPU-compute end of that loop with concrete cell-by-cell output, and [Getting Started](getting-started.md) for the full skill index.
+Run `/help` inside Claude for the full skill index.
 
 ---
 
@@ -415,4 +415,70 @@ Stopping before rent. Run `/vastai rent` when you're ready to spin up
 a GPU.
 ```
 
-Once API key + SSH key are sorted, `/vastai rent` (covered in the [Sample Pipeline](sample-pipeline.md) walkthrough) takes over from here.
+Once API key + SSH key are sorted, ask Claude to rent a GPU for the agent that needs it.
+
+**Input (in Claude)**
+
+```
+/vastai rent
+
+Use these guardrails:
+- GPU: RTX 4090
+- Max $/hr: 0.40   (filter dph<0.36 to absorb the dph_total fee gap)
+- Expected runtime: 30 minutes
+- Image: pytorch/pytorch:latest
+- Purpose: hypothesis sub-issue #<N>
+```
+
+**Output (expected shape)**
+
+```
+Confirm autobilling is OFF at https://cloud.vast.ai/billing/ — that's
+your real spending ceiling.
+
+Projected cost: $0.40/hr × 30min = $0.20 (worst case at the cap)
+Script wall-clock cap: --max-seconds 3600  (2× runtime margin)
+
+Top offers under $0.36/hr:
+  [1]  offer 12345678  RTX_4090  $0.27/hr  reliability 0.98  JP
+  [2]  offer 12345892  RTX_4090  $0.31/hr  reliability 0.97  US
+  [3]  offer 12346001  RTX_4090  $0.34/hr  reliability 0.99  DE
+  ...
+
+Which offer ID should I rent?
+```
+
+You pick one; Claude creates the instance with `--ssh --jupyter --direct --onstart-cmd "touch /root/.no_auto_tmux …"`, polls until it's `running`, and writes `experiments/.vastai-instance.json` (host, port, key path, projected cost). From there, `/vastai ssh`, `/vastai sync`, and `/vastai terminate` drive the rest of the loop — see the full skill at `.claude/skills/vastai.md` for the agent-driven training pattern (push code → launch detached → poll → pull results → destroy).
+
+**Don't forget Step 8.**
+
+---
+
+## Step 8 — Terminate when done
+
+Vast.ai bills by the second and there's no automatic shutoff. Always close out:
+
+**Input (in Claude)**
+
+```
+/vastai terminate
+```
+
+**Output (expected shape)**
+
+```
+Active instance: 12345678  RTX_4090  uptime 0h 34m  cost $0.15
+
+Sync final results before destroying? (yes/no): yes
+  rsync root@…:/workspace/results/ → experiments/results/   ✓
+  rsync root@…:/workspace/logs/    → experiments/results/logs/   ✓
+
+Destroy instance 12345678? (yes/no): yes
+  vastai destroy instance 12345678 …  ✓
+
+Archived state → experiments/.vastai-history.jsonl
+Appended to memory/log.md:
+  ## [2026-05-22] vastai | terminated 12345678 after 0.57h ($0.15)
+```
+
+That's the full self-contained loop: scaffold → claude → ingest PDF → issues + board → strategy → agents → (optional) GPU rent → train → sync → terminate.
