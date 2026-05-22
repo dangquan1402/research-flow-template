@@ -22,7 +22,7 @@ Every cell has an **input** (what you type) and an **output** (what you should s
 
 ## Prerequisites
 
-You need three tools installed and authenticated **before** running any cell below. The scaffolder won't help if these aren't ready.
+You need three tools installed and authenticated **before** running any cell below. `create-research-flow` won't help if these aren't ready.
 
 ### Node + npx
 
@@ -45,7 +45,7 @@ If `node` is missing: install from [nodejs.org](https://nodejs.org/) or `brew in
 
 ### GitHub CLI
 
-The scaffolder creates a repo, issues, and a project board — all via `gh`.
+`create-research-flow` creates a repo, issues, and a project board — all via `gh`.
 
 **Input**
 
@@ -65,7 +65,7 @@ github.com
 
 If not logged in: `gh auth login` (pick HTTPS, paste a token with `repo` + `project` + `workflow` scopes).
 
-> **Two GitHub accounts?** Use separate config dirs and set `GH_CONFIG_DIR=~/.config/gh-<profile>` before each `gh` call. The scaffolder honors `GH_CONFIG_DIR` if set.
+> **Two GitHub accounts?** Use separate config dirs and set `GH_CONFIG_DIR=~/.config/gh-<profile>` before each `gh` call. `create-research-flow` honors `GH_CONFIG_DIR` if set.
 
 ### Claude Code
 
@@ -87,12 +87,12 @@ If missing: `npm install -g @anthropic-ai/claude-code`, then `claude` once inter
 
 ## Step 1 — Scaffold the project
 
-Use the create-project scaffolder. Replace `<scaffolder>` with whatever npm package name your team publishes (the project's CLAUDE.md references one specifically — check there).
+Run `create-research-flow` — the published scaffolder that lays down `.claude/`, `memory/`, `sources/`, `experiments/`, `outputs/`, and `CLAUDE.md`, then wires up the GitHub repo, issue templates, and project board.
 
 **Input**
 
 ```bash
-npx <scaffolder>@latest my-research
+npx create-research-flow@latest my-research
 ```
 
 **Output (expected shape)**
@@ -119,20 +119,6 @@ npx <scaffolder>@latest my-research
 
   Next:  cd my-research && claude
 ```
-
-### Bypass interactive prompts
-
-For a fully unattended scaffold (CI, demos), accept defaults with `--yes`:
-
-**Input**
-
-```bash
-npx <scaffolder>@latest my-research --yes
-```
-
-**Output**
-
-Same as above, but no prompts — every step uses the default answer.
 
 **Input**
 
