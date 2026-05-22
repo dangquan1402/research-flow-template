@@ -160,68 +160,61 @@ You're now inside Claude with the project context loaded. Every cell from here o
 
 ---
 
-## Step 3 — Drop the PDF in
+## Step 3 — Drop the PDF in + update memory
 
-Move your source PDF into `sources/`, then tell Claude to ingest it. The `/read-pdf` skill renders each page as a PNG so figures, tables, and equations survive — text extraction alone would lose them.
-
-**Input (shell, in another tab or via Claude's bash tool)**
-
-```bash
-cp ~/Downloads/my-paper.pdf sources/
-```
+Drop your PDF anywhere on disk and just ask Claude in natural language. Claude picks the right skill (`/read-pdf` renders each page as a PNG so figures, tables, and equations survive — text extraction alone would lose them), reads it, and writes the extracted entities, findings, and open questions into `memory/` in the same turn.
 
 **Input (in Claude)**
 
 ```
-/read-pdf sources/my-paper.pdf
+Read this PDF: ~/Downloads/my-paper.pdf
+
+Then update memory:
+- Extract entities, findings, and open questions into memory/
+- Update memory/index.md
+- Append a line to memory/log.md
 ```
 
 **Output (expected shape)**
 
 ```
-Rendering sources/my-paper.pdf → sources/_pdf-images/my-paper/
-  page 01 → page-01.png  (1654×2339)
-  page 02 → page-02.png
-  ...
-  page 18 → page-18.png
+Copying ~/Downloads/my-paper.pdf → sources/my-paper.pdf
+Rendering 18 pages → sources/_pdf-images/my-paper/
 
-Loaded 18 pages. Ready to analyze.
-```
-
----
-
-## Step 4 — Ingest: memory + GitHub issue + project board
-
-Now ask Claude to extract findings into memory, open a parent research-goal issue, and add it to the board. The `/analyze` skill drives the memory side; `gh` handles the GitHub side.
-
-**Input (in Claude)**
-
-```
-/analyze the PDF I just loaded. Treat it as a fresh research goal.
-
-Do all of this in one pass:
-1. Extract entities, findings, and open questions into memory/
-2. Update memory/index.md and append a line to memory/log.md
-3. Open a parent GitHub issue with label "research-goal" using
-   .github/ISSUE_TEMPLATE/research-goal.md
-4. Add that issue to the project board (column: Backlog)
-5. Print the issue URL and the memory pages you created
-```
-
-**Output (expected shape)**
-
-```
-Reading 18 pages from sources/_pdf-images/my-paper/ …
-
-Extracted:
-  • 6 entities    → memory/entities/{slugs}.md
-  • 4 findings    → memory/findings/{slugs}.md
+Extracted from the PDF:
+  • 6 entities       → memory/entities/{slugs}.md
+  • 4 findings       → memory/findings/{slugs}.md
   • 3 open questions → memory/open-questions/{slugs}.md
 
 Updated memory/index.md (+13 entries)
 Appended to memory/log.md:
   ## [2026-05-22] ingest | my-paper.pdf → 6 entities, 4 findings
+```
 
+> The `block-source-modification` hook will reject any later `Edit` against `sources/` — that's intentional. PDFs are immutable once ingested; new insights go in `memory/findings/`.
+
+---
+
+## Step 4 — Open the parent issue + add to the project board
+
+Memory is populated. Now turn the research goal into a tracked GitHub issue and put it on the board, so the hypothesis agents you spawn later have something to link their sub-issues against.
+
+**Input (in Claude)**
+
+```
+Based on what you just ingested, open a parent research-goal issue:
+- Use .github/ISSUE_TEMPLATE/research-goal.md
+- Title: research(my-paper): <one-line goal from the abstract>
+- Label: research-goal
+- Body should link to the memory pages you created
+
+Then add the issue to the project board in the Backlog column. Print
+the issue URL when done.
+```
+
+**Output (expected shape)**
+
+```
 Opened parent issue:
   https://github.com/<you>/my-research/issues/1
   Title: research(my-paper): <goal extracted from abstract>
@@ -229,8 +222,6 @@ Opened parent issue:
 
 Added to project board "my-research" → Backlog
 ```
-
-> The `block-source-modification` hook will reject any later `Edit` against `sources/` — that's intentional. PDFs are immutable; new insights go in `memory/findings/`.
 
 ---
 
