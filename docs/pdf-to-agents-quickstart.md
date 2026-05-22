@@ -63,7 +63,15 @@ github.com
   - Token scopes: 'gist', 'project', 'read:org', 'repo', 'workflow'
 ```
 
-If not logged in: `gh auth login` (pick HTTPS, paste a token with `repo` + `project` + `workflow` scopes).
+If `gh` itself isn't installed:
+
+- **macOS:** `brew install gh`
+- **Linux (Debian/Ubuntu):** `sudo apt install gh` (newer distros) or follow [cli.github.com/manual/installation](https://cli.github.com/manual/installation) for the official apt repo
+- **Linux (Fedora/RHEL):** `sudo dnf install gh`
+- **Windows:** `winget install --id GitHub.cli` or `choco install gh`
+- **Any OS:** download a release from [github.com/cli/cli/releases](https://github.com/cli/cli/releases)
+
+If installed but not logged in: `gh auth login` (pick HTTPS, paste a token with `repo` + `project` + `workflow` scopes).
 
 > **Two GitHub accounts?** Use separate config dirs and set `GH_CONFIG_DIR=~/.config/gh-<profile>` before each `gh` call. `create-research-flow` honors `GH_CONFIG_DIR` if set.
 
@@ -254,3 +262,52 @@ The loop from here is the standard research-flow loop:
 4. `/distill` to extract decisions, `/lint` to keep memory clean
 
 See [Sample Pipeline](sample-pipeline.md) for the GPU-compute end of that loop with concrete cell-by-cell output, and [Getting Started](getting-started.md) for the full skill index.
+
+---
+
+## Step 7 — Set up Python + Vast.ai (optional, only if a hypothesis needs a GPU)
+
+Skip this step if all your greenlit hypotheses are pure-analysis. The moment one of them needs GPU compute (training, big inference, profiling), you'll want the Python env and the `vastai` CLI ready in this repo so the `/vastai` skill works.
+
+Ask Claude to set both up in one turn — no need to run the commands yourself.
+
+**Input (in Claude)**
+
+```
+Set up the Python env and the vastai CLI in this repo:
+1. Run `uv sync` to create .venv from pyproject.toml
+2. Add the vastai CLI as a dependency: `uv add vastai`
+3. Verify: `uv run vastai --version` prints a version
+4. Walk me through the `/vastai` skill's setup checks (API key + SSH
+   key) and stop before actually renting anything
+```
+
+**Output (expected shape)**
+
+```
+Running `uv sync` …
+  Resolved 47 packages in 412ms
+  Installed 47 packages in 1.8s
+
+Running `uv add vastai` …
+  Added `vastai>=0.3.0` to pyproject.toml
+  Installed in .venv
+
+Running `uv run vastai --version` …
+  vastai 0.3.x
+
+/vastai setup checks:
+  ✓ vastai CLI installed
+  ✗ API key — not found at ~/.vast_api_key
+    → Visit https://cloud.vast.ai/account/, copy your API key,
+      then run: vastai set api-key <KEY>
+  ✗ SSH key — no key registered with your Vast.ai account
+    → Pick one:
+       A) vastai create ssh-key                  (auto-generates)
+       B) vastai create ssh-key --ssh-key "$(cat ~/.ssh/id_ed25519.pub)"
+
+Stopping before rent. Run `/vastai rent` when you're ready to spin up
+a GPU.
+```
+
+Once API key + SSH key are sorted, `/vastai rent` (covered in the [Sample Pipeline](sample-pipeline.md) walkthrough) takes over from here.
