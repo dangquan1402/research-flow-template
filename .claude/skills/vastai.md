@@ -252,8 +252,8 @@ Run a one-shot remote command on the active instance (agent-driven, non-interact
    ```
    Omit `-i <ssh_key>` only if the state file has no `ssh_key` field (meaning the registered Vast.ai key matches the SSH default).
    Examples:
-   - `ssh -i ~/.ssh/quandang13 -p 16538 root@ssh9.vast.ai 'tail -n 50 /workspace/logs/run.log'`
-   - `ssh -i ~/.ssh/quandang13 -p 16538 root@ssh9.vast.ai 'nvidia-smi'`
+   - `ssh -i ~/.ssh/id_ed25519_vastai -p 16538 root@ssh9.vast.ai 'tail -n 50 /workspace/logs/run.log'`
+   - `ssh -i ~/.ssh/id_ed25519_vastai -p 16538 root@ssh9.vast.ai 'nvidia-smi'`
 3. **For the human** — print the interactive SSH command including `-i` if needed:
    ```bash
    ssh -i <ssh_key> -p <ssh_port> root@<ssh_host>
