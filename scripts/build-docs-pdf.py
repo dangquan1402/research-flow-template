@@ -36,6 +36,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 PAGES = [
     "index",
     "claude-code-quickstart",
+    "pdf-to-agents-quickstart",
     "getting-started",
     "sample-pipeline",
     "claude-code-guide",
@@ -87,7 +88,10 @@ th, td { border: 1px solid #d0d7de; padding: 6px 10px; text-align: left; vertica
 th { background: #f6f8fa; }
 blockquote { border-left: 3px solid #d0d7de; padding-left: 10px; color: #57606a; margin: 0.6em 0; }
 hr { border: 0; border-top: 1px solid #d0d7de; margin: 2em 0; }
-details { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 6px 10px; margin: 0.6em 0; }
+details {
+  background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px;
+  padding: 6px 10px; margin: 0.6em 0;
+}
 summary { cursor: pointer; font-weight: 600; }
 .page-break { page-break-before: always; }
 h1, h2, h3, h4 { page-break-after: avoid; }
