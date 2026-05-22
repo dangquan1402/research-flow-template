@@ -227,92 +227,13 @@ Added to project board "my-research" → Backlog
 
 ## Step 5 — Brainstorm strategies
 
-You now have a goal but no plan. Ask Claude to propose 3–5 distinct angles of attack, each one concrete enough to become its own hypothesis sub-issue.
-
-**Input (in Claude)**
-
-```
-Read memory/index.md, the new findings, and the open questions. Then
-propose 3-5 distinct strategies to make progress on issue #1. For each:
-- One-line hypothesis
-- What evidence would confirm or kill it
-- Roughly how much work (small / medium / large)
-- Whether it needs GPU compute
-
-Don't open issues yet — just print the list and wait for me to pick which
-ones to greenlight.
-```
-
-**Output (expected shape)**
-
-```
-Strategy candidates for issue #1:
-
-[A] Replicate the paper's baseline on our data
-    Confirm: matches reported metric ±5%
-    Kill:    diverges by >15% with no obvious config bug
-    Work:    medium · GPU: yes
-
-[B] Stress-test the headline claim by varying <X>
-    Confirm: claim survives 3+ perturbations
-    Kill:    breaks on a single trivial perturbation
-    Work:    small · GPU: yes
-
-[C] Compare against the cited prior-work baseline
-    Confirm: paper's delta reproduces
-    Kill:    prior work matches paper within noise
-    Work:    medium · GPU: yes
-
-[D] Ablation on the architectural choice the paper hand-waves
-    Confirm: ablation shows the choice matters (>2σ)
-    Kill:    ablation shows it's interchangeable with simpler variant
-    Work:    large · GPU: yes
-
-[E] Pure-analysis pass on Section 4's math
-    Confirm: derivation holds; assumptions are stated
-    Kill:    find a hidden assumption that limits scope
-    Work:    small · GPU: no
-
-Greenlight which to spawn?
-```
-
-You reply with something like *"greenlight A, B, E — skip the GPU-heavy ones for now."* Claude then opens one sub-issue per greenlit strategy (labeled `hypothesis`, linked to issue #1) and adds each to the project board.
+Ask Claude to propose 3–5 distinct hypothesis angles for issue #1, each with confirm/kill criteria and a rough work estimate; you greenlight which to spawn as sub-issues.
 
 ---
 
 ## Step 6 — Spawn the agent team
 
-For each greenlit hypothesis, spin up a parallel agent in its own git worktree. They share memory but work on isolated branches, so they don't conflict.
-
-**Input (in Claude)**
-
-```
-For each open hypothesis sub-issue under #1, spawn an Agent with
-isolation: "worktree". Each agent gets:
-- The parent goal (from #1)
-- Its specific hypothesis angle (from its sub-issue body)
-- Branch: hypothesis/GH-<sub-issue>-<slug>
-- Instructions to follow CLAUDE.md conventions, work in memory/,
-  commit + push when done, then comment on its sub-issue with a summary
-
-Dispatch all of them in parallel — they're independent.
-```
-
-**Output (expected shape)**
-
-```
-Dispatching 3 hypothesis agents in parallel:
-
-[A] hypothesis/GH-2-replicate-baseline    worktree → .worktrees/gh-2 …  RUNNING
-[B] hypothesis/GH-3-stress-test-claim     worktree → .worktrees/gh-3 …  RUNNING
-[E] hypothesis/GH-5-section-4-math        worktree → .worktrees/gh-5 …  RUNNING
-
-I'll report back as each one finishes. You can keep working on the main
-branch in the meantime — their changes won't show up here until they push
-and you pull.
-```
-
-When an agent finishes, it pushes its branch, comments on its sub-issue, and Claude surfaces a summary. From there you `/synthesize` to merge findings across branches, or `/critique` an individual hypothesis that looks shaky.
+For each greenlit hypothesis sub-issue, dispatch a worktree-isolated Agent on its own `hypothesis/GH-<id>-<slug>` branch; they run in parallel and comment back on their sub-issues when done.
 
 ---
 
